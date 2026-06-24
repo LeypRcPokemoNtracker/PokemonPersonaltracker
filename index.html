@@ -103,21 +103,44 @@ async function signUp() {
     }
 }
 async function signIn() {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        try {
-            const {
-                error
-            } = await db.auth.signInWithPassword({
-                email,
-                password
-            });
-            if (error) {
-                document.getElementById('status').innerText = error.message;
-                return;
-            }
-            document.getElementById('status').innerText = 'Login successful!'; 
-            Redirect after login setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000); } catch (err) { document.getElementById('status').innerText = err.message; } }
+
+
+const email = document.getElementById('email').value.trim();
+const password = document.getElementById('password').value;
+
+try {
+
+    const { error } = await db.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+        document.getElementById('status').innerText = error.message;
+        return;
+    }
+
+    document.getElementById('status').innerText =
+        'Login successful!';
+
+    // Redirect after login
+    setTimeout(() => {
+        window.location.href = 'dashboard.html';
+    }, 1000);
+
+} catch (err) {
+
+    document.getElementById('status').innerText =
+        err.message;
+
+}
+
+
+}
+
+
+}
+
 </script>
 
 </body>
