@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mezastar Tracker</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#0f172a;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.card{
+    width:350px;
+    background:#1e293b;
+    padding:25px;
+    border-radius:12px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    border:none;
+    border-radius:6px;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.signup{
+    background:#22c55e;
+    color:white;
+}
+
+.login{
+    background:#3b82f6;
+    color:white;
+}
+
+#status{
+    margin-top:15px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="card">
+
+<h2>Mezastar Tracker</h2>
+
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Password">
+
+<button class="signup" onclick="signUp()">
+Register
+</button>
+
+<button class="login" onclick="signIn()">
+Login
+</button>
+
+<div id="status"></div>
+
+</div>
+
+<script>
+
+const supabase = window.supabase.createClient(
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+);
+
+async function signUp(){
+
+const email=document.getElementById('email').value;
+const password=document.getElementById('password').value;
+
+const {error}=await supabase.auth.signUp({
+email,
+password
+});
+
+document.getElementById('status').innerText=
+error ? error.message : 'Registration successful';
+}
+
+async function signIn(){
+
+const email=document.getElementById('email').value;
+const password=document.getElementById('password').value;
+
+const {error}=await supabase.auth.signInWithPassword({
+email,
+password
+});
+
+document.getElementById('status').innerText=
+error ? error.message : 'Login successful';
+}
+
+</script>
+
+</body>
+</html>
