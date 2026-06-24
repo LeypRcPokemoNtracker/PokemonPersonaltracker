@@ -67,11 +67,12 @@ width:250px;
 }
   #rarityFilter{
 padding:10px;
-border;
+border:none;
 border-radius:8px;
-background;
-color;
+background:white;
+color:black;
 min-width:170px;
+}
 }
 
 .progress{
@@ -297,20 +298,7 @@ renderPokemon();
 }
 
 
-async function loadCollection(){
 
-    const {data}=await db
-    .from('user_collection')
-    .select('*')
-    .eq('user_id',userId);
-
-    ownedMap={};
-
-    (data||[]).forEach(x=>{
-        ownedMap[x.pokemon_id]=x;
-    });
-
-}
 
 async function loadCollection(){
 
@@ -396,6 +384,10 @@ ${p.tag_code || ''}
 
 <div class="name">
 ${p.pokemon_name}
+</div>
+
+<div class="rarity">
+${'⭐'.repeat(p.rarity)}
 </div>
 
 <div class="row">
