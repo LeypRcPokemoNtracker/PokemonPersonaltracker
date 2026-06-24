@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Collection</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+}
+
+header{
+background:#1e293b;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.container{
+padding:20px;
+max-width:1400px;
+margin:auto;
+}
+
+.topbar{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+margin-bottom:20px;
+}
+
+button{
+padding:10px 16px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+.version-btn{
+background:#334155;
+color:white;
+}
+
+.active{
+background:#3b82f6;
+}
+
+.search{
+padding:10px;
+border:none;
+border-radius:8px;
+width:250px;
+}
+
+.progress{
+margin-bottom:20px;
+font-size:18px;
+font-weight:bold;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+gap:15px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+border-radius:12px;
+}
+
+.tag{
+color:#94a3b8;
+font-size:13px;
+margin-bottom:5px;
+}
+
+.name{
+font-size:18px;
+font-weight:bold;
+margin-bottom:8px;
+}
+
+.rarity{
+margin-bottom:10px;
+color:#facc15;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.qty{
+width:70px;
+padding:6px;
+border:none;
+border-radius:6px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h2>Collection</h2>
+
+<button onclick="window.location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<div class="container">
+
+<div class="topbar">
+
+<button class="version-btn active" onclick="loadVersion(1,this)">
+V1
+</button>
+
+<button class="version-btn" onclick="loadVersion(2,this)">
+V2
+</button>
+
+<button class="version-btn" onclick="loadVersion(3,this)">
+V3
+</button>
+
+<input
+type="text"
+id="search"
+class="search"
+placeholder="Search Pokemon..."
+onkeyup="renderPokemon()">
+
+</div>
+
+<div class="progress" id="progress">
+Loading...
+</div>
+
+<div class="grid" id="grid"></div>
+
+</div>
+
+<script>
+
+const db = supabase.createClient(
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+);
+
+const userId =
+localStorage.getItem('user_id');
+
+if(!userId){
+location.href='index.html';
+}
+
+let pokemonList=[];
+let ownedMap={};
+let currentVersion=1;
+
+loadVersion(1);
+
+async function loadVersion(version,btn=null){
+
+currentVersion=version;
+
+document
+.querySelectorAll('.version-btn')
+.forEach(x=>x.classList.remove('active'));
+
+if(btn) btn.classList.add('active');
+
+await loadCollection();
+
+const {data,error}=await db
+.from('pokemon_master')
+.select('*')
+.eq('version',version)
+.order('rarity',{ascending:false})
+.order('tag_code');
+
+if(error){
+console.error(error);
+return;
+}
+
+pokemonList=data;
+
+renderPokemon();
+
+}
+
+async function loadCollection(){
+
+const {data}=await db
+.from('user_collection')
+.select('*')
+.eq('user_id',userId);
+
+ownedMap={};
+
+(data||[]).forEach(x=>{
+ownedMap[x.pokemon_id]=x;
+});
+
+}
+
+function renderPokemon(){
+
+const search=
+document.getElementById('search')
+.value
+.toLowerCase();
+
+const filtered=
+pokemonList.filter(p=>
+
+p.pokemon_name.toLowerCase().includes(search)
+
+);
+
+const ownedCount=
+filtered.filter(x=>
+ownedMap[x.id]?.owned
+).length;
+
+document.getElementById('progress')
+.innerHTML=
+`Owned ${ownedCount} / ${filtered.length}`;
+
+let html='';
+
+filtered.forEach(p=>{
+
+const owned=
+ownedMap[p.id]?.owned || false;
+
+const qty=
+ownedMap[p.id]?.quantity || 1;
+
+html+=`
+
+<div class="card">
+
+<div class="tag">
+${p.tag_code || ''}
+</div>
+
+<div class="name">
+${p.pokemon_name}
+</div>
+
+<div class="rarity">
+${'⭐'.repeat(p.rarity)}
+</div>
+
+<div class="row">
+
+<label>
+
+<input
+type="checkbox"
+${owned?'checked':''}
+onchange="toggleOwned(${p.id},this.checked)">
+
+Owned
+
+</label>
+
+<input
+class="qty"
+type="number"
+min="1"
+value="${qty}"
+onchange="updateQty(${p.id},this.value)">
+
+</div>
+
+</div>
+
+`;
+
+});
+
+document.getElementById('grid')
+.innerHTML=html;
+
+}
+
+async function toggleOwned(pokemonId,owned){
+
+const qty=
+ownedMap[pokemonId]?.quantity || 1;
+
+const {error}=await db
+.from('user_collection')
+.upsert({
+user_id:Number(userId),
+pokemon_id:pokemonId,
+owned:owned,
+quantity:qty
+});
+
+if(error){
+console.error(error);
+return;
+}
+
+await loadCollection();
+renderPokemon();
+
+}
+
+async function updateQty(pokemonId,qty){
+
+const owned=
+ownedMap[pokemonId]?.owned || false;
+
+const {error}=await db
+.from('user_collection')
+.upsert({
+user_id:Number(userId),
+pokemon_id:pokemonId,
+owned:owned,
+quantity:Number(qty)
+});
+
+if(error){
+console.error(error);
+return;
+}
+
+await loadCollection();
+
+}
+
+</script>
+
+</body>
+</html>
