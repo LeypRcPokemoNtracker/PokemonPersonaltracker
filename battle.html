@@ -135,9 +135,27 @@ Dashboard
 
 <br>
 
-<select id="enemySelect" onchange="findCounters()">
-<option value="">Choose Pokémon...</option>
-</select>
+<input
+type="text"
+id="enemySearch"
+placeholder="Search Pokémon..."
+onkeyup="searchPokemon()"
+style="
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+font-size:16px;
+">
+
+<div
+id="searchResults"
+style="
+margin-top:10px;
+max-height:250px;
+overflow-y:auto;
+">
+</div>
 
 <div class="enemy-info" id="enemyInfo"></div>
 
@@ -198,8 +216,7 @@ async function init(){
 
 await loadPokemon();
 await loadOwnedPokemon();
-populateDropdown();
-
+searchPokemon();
 }
 
 async function loadPokemon(){
@@ -231,7 +248,9 @@ pokemon_name,
 version,
 rarity,
 pokemon_type_1,
-pokemon_type_2
+pokemon_type_2,
+image_url
+
 )
 `)
 .eq('user_id', Number(userId))
@@ -245,31 +264,77 @@ return;
 ownedPokemon = data.map(x=>x.pokemon_master);
 
 }
+function searchPokemon(){
 
-function populateDropdown(){
+const search =
+document
+.getElementById('enemySearch')
+.value
+.toLowerCase();
 
-const select =
-document.getElementById('enemySelect');
+const results =
+document.getElementById('searchResults');
 
-allPokemon
-.sort((a,b)=>
-a.pokemon_name.localeCompare(b.pokemon_name))
-.forEach(p=>{
+if(search.length < 1){
 
-select.innerHTML += `
-<option value="${p.id}">
-${p.pokemon_name}
-</option>
-`;
-
-});
+results.innerHTML = '';
+return;
 
 }
 
-function findCounters(){
+const matches =
+allPokemon
+.filter(p=>
 
-const enemyId =
-document.getElementById('enemySelect').value;
+p.pokemon_name
+.toLowerCase()
+.includes(search)
+
+||
+
+(p.tag_code || '')
+.toLowerCase()
+.includes(search)
+
+)
+.slice(0,20);
+
+results.innerHTML =
+matches.map(p => `
+
+<div
+onclick="selectPokemon(${p.id})"
+style="
+padding:10px;
+cursor:pointer;
+background:#334155;
+margin-bottom:5px;
+border-radius:8px;
+">
+
+<b>${p.pokemon_name}</b>
+
+${p.tag_code
+? `<span style="color:#94a3b8">(${p.tag_code})</span>`
+: ''}
+
+</div>
+
+`).join('');
+
+}
+  function selectPokemon(id){
+
+document
+.getElementById('searchResults')
+.innerHTML='';
+
+findCounters(id);
+
+}
+
+
+function findCounters(enemyId){
 
 if(!enemyId) return;
 
@@ -348,6 +413,17 @@ counters.forEach(p=>{
 html += `
 
 <div class="pokemon-card">
+
+${p.image_url ? `
+<img
+src="${p.image_url}"
+style="
+width:100%;
+height:150px;
+object-fit:contain;
+margin-bottom:10px;
+">
+` : ''}
 
 <div class="tag">
 ${p.tag_code || ''}
