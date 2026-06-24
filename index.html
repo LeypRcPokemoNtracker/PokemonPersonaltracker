@@ -88,19 +88,35 @@ const db = supabase.createClient
 );
 
 async function signUp() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    try {
-        const {
-            error
-        } = await db.auth.signUp({
-            email,
-            password
-        });
-        document.getElementById('status').innerText = error ? error.message : 'Registration successful!';
-    } catch (err) {
-        document.getElementById('status').innerText = err.message;
+
+const email = document.getElementById('email').value.trim();
+const password = document.getElementById('password').value;
+
+try {
+
+    const { data, error } = await db.auth.signUp({
+        email,
+        password
+    });
+
+    console.log("SIGNUP DATA:", data);
+    console.log("SIGNUP ERROR:", error);
+
+    if (error) {
+        document.getElementById('status').innerText = error.message;
+        return;
     }
+
+    document.getElementById('status').innerText =
+        'Registration successful!';
+
+} catch (err) {
+
+    console.error(err);
+    document.getElementById('status').innerText = err.message;
+
+}
+
 }
 async function signIn() {
 
