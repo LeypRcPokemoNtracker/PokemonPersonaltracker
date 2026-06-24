@@ -363,7 +363,42 @@ document
 .innerHTML='';
 
 }
+function renderEnemyTeam(){
 
+let html='';
+
+enemyTeam.forEach((p,index)=>{
+
+html += `
+
+<div style="
+background:#334155;
+padding:10px;
+border-radius:10px;
+">
+
+${p.pokemon_name}
+
+<button
+onclick="removeEnemy(${index})"
+style="
+margin-left:10px;
+background:red;
+">
+X
+</button>
+
+</div>
+
+`;
+
+});
+
+document
+.getElementById('enemyTeamBox')
+.innerHTML = html;
+
+}
 
 function findCounters(enemyId){
 
