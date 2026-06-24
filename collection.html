@@ -233,7 +233,7 @@ query = query.eq('version',version);
 const {data,error} = await query
 .order('version')
 .order('rarity',{ascending})
-.order('tag_code');
+  .order('tag_code');
 
 if(error){
 console.error(error);
@@ -243,6 +243,7 @@ return;
 pokemonList = data;
 
 renderPokemon();
+}
 
 async function loadCollection(){
 
