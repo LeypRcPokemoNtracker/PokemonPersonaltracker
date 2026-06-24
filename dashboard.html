@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Mezastar Tracker Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    font-family:Arial,sans-serif;
+    min-height:100vh;
+}
+
+.header{
+    background:#1e293b;
+    padding:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:20px;
+}
+
+.card{
+    background:#1e293b;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+}
+
+.stat{
+    background:#334155;
+    padding:20px;
+    border-radius:12px;
+}
+
+.big{
+    font-size:32px;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+button{
+    border:none;
+    border-radius:8px;
+    padding:12px 20px;
+    cursor:pointer;
+    color:white;
+}
+
+.logout{
+    background:#ef4444;
+}
+
+.collection{
+    background:#3b82f6;
+}
+
+.battle{
+    background:#22c55e;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+```
+<h2>🎯 Mezastar Tracker</h2>
+
+<button
+    class="logout"
+    onclick="logout()"
+>
+    Logout
+</button>
+```
+
+</div>
+
+<div class="container">
+
+```
+<div class="card">
+
+    <h2 id="welcome">
+        Welcome Trainer
+    </h2>
+
+</div>
+
+<div class="stats">
+
+    <div class="stat">
+        <div>Total Pokémon</div>
+        <div class="big" id="totalPokemon">
+            0
+        </div>
+    </div>
+
+    <div class="stat">
+        <div>Collected</div>
+        <div class="big" id="collectedPokemon">
+            0
+        </div>
+    </div>
+
+    <div class="stat">
+        <div>Completion</div>
+        <div class="big" id="completion">
+            0%
+        </div>
+    </div>
+
+</div>
+
+<div class="card">
+
+    <h3>Navigation</h3>
+
+    <br>
+
+    <div class="actions">
+
+        <button
+            class="collection"
+            onclick="window.location.href='collection.html'"
+        >
+            Collection
+        </button>
+
+        <button
+            class="battle"
+            onclick="window.location.href='battle.html'"
+        >
+            Battle Helper
+        </button>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<script>
+
+const db = supabase.createClient(
+    'https://dzbpzlkpjbascrjozcih.supabase.co',
+    'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+);
+
+const userId =
+    localStorage.getItem('user_id');
+
+const username =
+    localStorage.getItem('username');
+
+if(!userId){
+
+    window.location.href =
+        'index.html';
+
+}
+
+document.getElementById('welcome')
+    .innerText =
+    `Welcome, ${username}`;
+
+loadStats();
+
+async function loadStats(){
+
+    const { count: total } =
+        await db
+        .from('pokemon_master')
+        .select('*', {
+            count:'exact',
+            head:true
+        });
+
+    const { count: collected } =
+        await db
+        .from('user_collection')
+        .select('*', {
+            count:'exact',
+            head:true
+        })
+        .eq('user_id', userId);
+
+    document.getElementById(
+        'totalPokemon'
+    ).innerText =
+        total || 0;
+
+    document.getElementById(
+        'collectedPokemon'
+    ).innerText =
+        collected || 0;
+
+    const percent =
+        total
+        ? ((collected || 0) / total * 100)
+            .toFixed(1)
+        : 0;
+
+    document.getElementById(
+        'completion'
+    ).innerText =
+        percent + '%';
+}
+
+function logout(){
+
+    localStorage.clear();
+
+    window.location.href =
+        'index.html';
+}
+
+</script>
+
+</body>
+</html>
