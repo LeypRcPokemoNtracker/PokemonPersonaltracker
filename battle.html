@@ -182,6 +182,42 @@ overflow-y:auto;
 
 <div id="results"></div>
 
+<hr style="margin:25px 0;border-color:#334155;">
+
+<h3>Battle Result</h3>
+
+<br>
+
+<select id="battleResult">
+
+<option value="Win">🟢 Win</option>
+
+<option value="Loss">🔴 Loss</option>
+
+<option value="Draw">🟡 Draw</option>
+
+</select>
+
+<br><br>
+
+<textarea
+id="battleNotes"
+placeholder="Notes (optional)"
+style="
+width:100%;
+height:100px;
+padding:12px;
+border:none;
+border-radius:8px;
+resize:vertical;
+"></textarea>
+
+<br><br>
+
+<button onclick="saveBattle()">
+💾 Save Battle
+</button>
+
 </div>
 
 </div>
@@ -202,6 +238,7 @@ location.href='index.html';
 let allPokemon = [];
 let ownedPokemon = [];
 let enemyTeam = [];
+  let recommendedTeam = [];
   
 const weaknesses = {
 
@@ -410,11 +447,13 @@ renderEnemyTeam();
 }
 function buildBestTeam(){
 
-if(enemyTeam.length === 0){
-alert('Select enemies first');
-return;
-}
+if(enemyTeam.length !== 3){
 
+alert("Please select exactly 3 enemy Pokémon.");
+
+return;
+
+}
 let enemyWeaknesses = [];
 
 enemyTeam.forEach(enemy=>{
@@ -461,7 +500,7 @@ score
 });
 
 const bestTeam = scored
-.filter(x=>x.score > 0)
+.filter(x => x.score > 0)
 .sort((a,b)=>{
 
 if(b.score !== a.score)
@@ -477,8 +516,9 @@ b.pokemon_name
 })
 .slice(0,3);
 
-renderBestTeam(bestTeam);
+recommendedTeam = bestTeam;
 
+renderBestTeam(bestTeam);
 }
   
   
@@ -565,131 +605,115 @@ document
 .innerHTML = html;
 
 }
-function findCounters(enemyId){
 
-if(!enemyId) return;
+  async function saveBattle(){
 
-const enemy =
-allPokemon.find(x=>x.id == enemyId);
+if(enemyTeam.length !== 3){
 
-if(!enemy) return;
+alert("Please select 3 enemy Pokémon.");
 
-let weakTo = [];
+return;
 
-if(enemy.pokemon_type_1){
-weakTo.push(
-...(weaknesses[enemy.pokemon_type_1] || [])
-);
 }
 
-if(enemy.pokemon_type_2){
-weakTo.push(
-...(weaknesses[enemy.pokemon_type_2] || [])
-);
+if(recommendedTeam.length !== 3){
+
+alert("Please build your team first.");
+
+return;
+
 }
 
-weakTo = [...new Set(weakTo)];
+const result =
+document.getElementById("battleResult").value;
 
-document.getElementById('enemyInfo').innerHTML = `
+const notes =
+document.getElementById("battleNotes").value;
 
-<b>${enemy.pokemon_name}</b><br>
+const {data,error}=await db
 
-Type 1:
-${enemy.pokemon_type_1 || '-'}<br>
+.from("battle_history")
 
-Type 2:
-${enemy.pokemon_type_2 || '-'}<br>
+.insert({
 
-Weak To:
-${weakTo.join(', ')}
+user_id:Number(userId),
 
-`;
+result:result,
 
-const counters =
-ownedPokemon
-.filter(p =>
+notes:notes
 
-weakTo.includes(p.pokemon_type_1) ||
+})
 
-weakTo.includes(p.pokemon_type_2)
+.select()
 
-)
-.sort((a,b)=>{
+.single();
 
-if(b.rarity !== a.rarity)
-return b.rarity - a.rarity;
+if(error){
 
-return a.pokemon_name.localeCompare(
-b.pokemon_name
-);
+console.log(error);
+
+alert("Unable to save battle.");
+
+return;
+
+}
+
+const battleId=data.id;
+
+for(let i=0;i<3;i++){
+
+await db
+
+.from("battle_enemy")
+
+.insert({
+
+battle_id:battleId,
+
+slot:i+1,
+
+pokemon_id:enemyTeam[i].id
 
 });
 
-let html='';
+}
 
-if(counters.length===0){
+for(let i=0;i<3;i++){
 
-html=`
-<div class="none">
-No owned counters found.
-</div>
-`;
+await db
 
-}else{
+.from("battle_team")
 
-html='<div class="results">';
+.insert({
 
-counters.forEach(p=>{
+battle_id:battleId,
 
-html += `
+slot:i+1,
 
-<div class="pokemon-card">
-
-${p.image_url ? `
-<img
-src="${p.image_url}"
-style="
-width:100%;
-height:150px;
-object-fit:contain;
-margin-bottom:10px;
-">
-` : ''}
-
-<div class="tag">
-${p.tag_code || ''}
-</div>
-
-<div class="name">
-${p.pokemon_name}
-</div>
-
-<div class="rarity">
-${'⭐'.repeat(p.rarity)}
-</div>
-
-<div class="type">
-${p.pokemon_type_1 || ''}
-${p.pokemon_type_2 ? ' / ' + p.pokemon_type_2 : ''}
-</div>
-
-<div class="version">
-Version ${p.version}
-</div>
-
-</div>
-
-`;
+pokemon_id:recommendedTeam[i].id
 
 });
 
-html+='</div>';
+}
+
+alert("✅ Battle Saved!");
+
+enemyTeam=[];
+
+recommendedTeam=[];
+
+renderEnemyTeam();
+
+document.getElementById("results").innerHTML="";
+
+document.getElementById("battleNotes").value="";
+    document.getElementById("battleResult").selectedIndex = 0;
+    document.getElementById("enemySearch").value="";
+document.getElementById("searchResults").innerHTML="";
+document.getElementById("enemyInfo").innerHTML="";
 
 }
 
-document.getElementById('results').innerHTML = html;
-
-}
 
 </script>
 
