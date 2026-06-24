@@ -201,7 +201,8 @@ location.href='index.html';
 
 let allPokemon = [];
 let ownedPokemon = [];
-
+let enemyTeam = [];
+  
 const weaknesses = {
 
 Fire:['Water','Ground','Rock'],
@@ -363,6 +364,7 @@ document
 .innerHTML='';
 
 }
+  
 function renderEnemyTeam(){
 
 let html='';
@@ -399,7 +401,170 @@ document
 .innerHTML = html;
 
 }
+  function removeEnemy(index){
 
+enemyTeam.splice(index,1);
+
+renderEnemyTeam();
+
+}
+function buildBestTeam(){
+
+if(enemyTeam.length === 0){
+alert('Select enemies first');
+return;
+}
+
+let enemyWeaknesses = [];
+
+enemyTeam.forEach(enemy=>{
+
+if(enemy.pokemon_type_1){
+
+enemyWeaknesses.push(
+...(weaknesses[enemy.pokemon_type_1] || [])
+);
+
+}
+
+if(enemy.pokemon_type_2){
+
+enemyWeaknesses.push(
+...(weaknesses[enemy.pokemon_type_2] || [])
+);
+
+}
+
+});
+
+const scored = ownedPokemon.map(p=>{
+
+let score = 0;
+
+enemyWeaknesses.forEach(type=>{
+
+if(
+p.pokemon_type_1 === type
+||
+p.pokemon_type_2 === type
+){
+score++;
+}
+
+});
+
+return {
+...p,
+score
+};
+
+});
+
+const bestTeam = scored
+.filter(x=>x.score > 0)
+.sort((a,b)=>{
+
+if(b.score !== a.score)
+return b.score - a.score;
+
+if(b.rarity !== a.rarity)
+return b.rarity - a.rarity;
+
+return a.pokemon_name.localeCompare(
+b.pokemon_name
+);
+
+})
+.slice(0,3);
+
+renderBestTeam(bestTeam);
+
+}
+  
+  
+  function renderBestTeam(team){
+
+let html='';
+
+if(team.length===0){
+
+html=`
+<div class="none">
+No suitable team found.
+</div>
+`;
+
+}else{
+
+html='<div class="results">';
+
+team.forEach((p,index)=>{
+
+const medals =
+['🥇','🥈','🥉'];
+
+html += `
+
+<div class="pokemon-card">
+
+<div style="
+font-size:24px;
+margin-bottom:10px;
+">
+${medals[index]}
+</div>
+
+${p.image_url ? `
+<img
+src="${p.image_url}"
+style="
+width:100%;
+height:150px;
+object-fit:contain;
+margin-bottom:10px;
+">
+` : ''}
+
+<div class="tag">
+${p.tag_code || ''}
+</div>
+
+<div class="name">
+${p.pokemon_name}
+</div>
+
+<div class="rarity">
+${'⭐'.repeat(p.rarity)}
+</div>
+
+<div class="type">
+${p.pokemon_type_1 || ''}
+${p.pokemon_type_2 ? ' / ' + p.pokemon_type_2 : ''}
+</div>
+
+<div>
+Score: ${p.score}
+</div>
+
+<div class="version">
+Version ${p.version}
+</div>
+
+</div>
+
+`;
+
+});
+
+html+='</div>';
+
+}
+
+document
+.getElementById('results')
+.innerHTML = html;
+
+}
 function findCounters(enemyId){
 
 if(!enemyId) return;
