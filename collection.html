@@ -152,6 +152,10 @@ V2
 <button class="version-btn" onclick="loadVersion(3,this)">
 V3
 </button>
+  
+  <button class="version-btn" onclick="loadVersion('all',this)"> 
+    ALL 
+  </button>
 
 <input
 type="text"
@@ -218,11 +222,17 @@ if(btn) btn.classList.add('active');
 
 await loadCollection();
 
-const {data,error}=await db
+let query = db
 .from('pokemon_master')
-.select('*')
-.eq('version',version)
-.order('rarity',{ascending:false})
+.select('*');
+
+if(version !== 'all'){
+query = query.eq('version',version);
+}
+
+const {data,error} = await query
+.order('version')
+.order('rarity',{ascending})
 .order('tag_code');
 
 if(error){
