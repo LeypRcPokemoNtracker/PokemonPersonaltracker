@@ -232,7 +232,7 @@ query = query.eq('version',version);
 
 const {data,error} = await query
 .order('version')
-.order('rarity',{ascending})
+.order('rarity',{ascending:false})
   .order('tag_code');
 
 if(error){
