@@ -65,6 +65,14 @@ border:none;
 border-radius:8px;
 width:250px;
 }
+  #rarityFilter{
+padding:10px;
+border;
+border-radius:8px;
+background;
+color;
+min-width:170px;
+}
 
 .progress{
 margin-bottom:20px;
@@ -151,7 +159,23 @@ id="search"
 class="search"
 placeholder="Search Pokemon..."
 onkeyup="renderPokemon()">
+<select id="rarityFilter" onchange="renderPokemon()">
 
+<option value="all"> All Rarities </option>
+
+<option value="6"> ⭐⭐⭐⭐⭐⭐ 6 Star </option>
+
+<option value="5"> ⭐⭐⭐⭐⭐ 5 Star </option>
+
+<option value="4"> ⭐⭐⭐⭐ 4 Star </option>
+
+<option value="3"> ⭐⭐⭐ 3 Star </option>
+
+<option value="2"> ⭐⭐ 2 Star </option>
+
+<option value="1"> ⭐ Regular </option>
+
+</select>
 </div>
 
 <div class="progress" id="progress">
@@ -229,17 +253,35 @@ ownedMap[x.pokemon_id]=x;
 
 function renderPokemon(){
 
-const search=
+const search =
 document.getElementById('search')
 .value
 .toLowerCase();
 
-const filtered=
-pokemonList.filter(p=>
+const rarityFilter =
+document.getElementById('rarityFilter')
+.value;
 
-p.pokemon_name.toLowerCase().includes(search)
+const filtered =
+pokemonList.filter(p => {
 
-);
+const matchesSearch =
+p.pokemon_name
+.toLowerCase()
+.includes(search);
+
+const matchesRarity =
+
+rarityFilter === 'all'
+
+||
+
+p.rarity == rarityFilter;
+
+return matchesSearch &&
+matchesRarity;
+
+});
 
 const ownedCount=
 filtered.filter(x=>
