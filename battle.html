@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Battle Helper</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+min-height:100vh;
+}
+
+header{
+background:#1e293b;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.container{
+max-width:1400px;
+margin:auto;
+padding:20px;
+}
+
+.card{
+background:#1e293b;
+padding:20px;
+border-radius:12px;
+margin-bottom:20px;
+}
+
+select{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+font-size:16px;
+}
+
+.enemy-info{
+margin-top:15px;
+line-height:1.8;
+}
+
+.results{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+gap:15px;
+margin-top:20px;
+}
+
+.pokemon-card{
+background:#334155;
+padding:15px;
+border-radius:10px;
+}
+
+.tag{
+color:#94a3b8;
+font-size:13px;
+}
+
+.name{
+font-size:20px;
+font-weight:bold;
+margin:8px 0;
+}
+
+.rarity{
+color:#facc15;
+margin-bottom:8px;
+}
+
+.type{
+color:#38bdf8;
+margin-bottom:5px;
+}
+
+.version{
+color:#94a3b8;
+font-size:13px;
+}
+
+.none{
+text-align:center;
+padding:25px;
+}
+
+button{
+background:#3b82f6;
+color:white;
+border:none;
+padding:10px 15px;
+border-radius:8px;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>⚔️ Battle Helper</h2>
+
+<button onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<div class="container">
+
+<div class="card">
+
+<h3>Select Enemy Pokémon</h3>
+
+<br>
+
+<select id="enemySelect" onchange="findCounters()">
+<option value="">Choose Pokémon...</option>
+</select>
+
+<div class="enemy-info" id="enemyInfo"></div>
+
+</div>
+
+<div class="card">
+
+<h3>Recommended Pokémon You Own</h3>
+
+<div id="results"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const db = supabase.createClient(
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+);
+
+const userId = localStorage.getItem('user_id');
+
+if(!userId){
+location.href='index.html';
+}
+
+let allPokemon = [];
+let ownedPokemon = [];
+
+const weaknesses = {
+
+Fire:['Water','Ground','Rock'],
+Water:['Electric','Grass'],
+Grass:['Fire','Ice','Flying','Bug'],
+Electric:['Ground'],
+Rock:['Water','Grass','Ground','Steel'],
+Ground:['Water','Grass','Ice'],
+Flying:['Electric','Rock','Ice'],
+Dragon:['Ice','Dragon','Fairy'],
+Dark:['Bug','Fairy','Fighting'],
+Psychic:['Bug','Ghost','Dark'],
+Ghost:['Ghost','Dark'],
+Fighting:['Flying','Psychic','Fairy'],
+Ice:['Fire','Rock','Steel','Fighting'],
+Steel:['Fire','Ground','Fighting'],
+Fairy:['Steel','Poison'],
+Bug:['Fire','Flying','Rock'],
+Poison:['Ground','Psychic'],
+Normal:['Fighting']
+
+};
+
+init();
+
+async function init(){
+
+await loadPokemon();
+await loadOwnedPokemon();
+populateDropdown();
+
+}
+
+async function loadPokemon(){
+
+const {data,error} = await db
+.from('pokemon_master')
+.select('*')
+.not('pokemon_type_1','is',null);
+
+if(error){
+console.error(error);
+return;
+}
+
+allPokemon = data;
+
+}
+
+async function loadOwnedPokemon(){
+
+const {data,error} = await db
+.from('user_collection')
+.select(`
+pokemon_id,
+pokemon_master(
+id,
+tag_code,
+pokemon_name,
+version,
+rarity,
+pokemon_type_1,
+pokemon_type_2
+)
+`)
+.eq('user_id', Number(userId))
+.eq('owned', true);
+
+if(error){
+console.error(error);
+return;
+}
+
+ownedPokemon = data.map(x=>x.pokemon_master);
+
+}
+
+function populateDropdown(){
+
+const select =
+document.getElementById('enemySelect');
+
+allPokemon
+.sort((a,b)=>
+a.pokemon_name.localeCompare(b.pokemon_name))
+.forEach(p=>{
+
+select.innerHTML += `
+<option value="${p.id}">
+${p.pokemon_name}
+</option>
+`;
+
+});
+
+}
+
+function findCounters(){
+
+const enemyId =
+document.getElementById('enemySelect').value;
+
+if(!enemyId) return;
+
+const enemy =
+allPokemon.find(x=>x.id == enemyId);
+
+if(!enemy) return;
+
+let weakTo = [];
+
+if(enemy.pokemon_type_1){
+weakTo.push(
+...(weaknesses[enemy.pokemon_type_1] || [])
+);
+}
+
+if(enemy.pokemon_type_2){
+weakTo.push(
+...(weaknesses[enemy.pokemon_type_2] || [])
+);
+}
+
+weakTo = [...new Set(weakTo)];
+
+document.getElementById('enemyInfo').innerHTML = `
+
+<b>${enemy.pokemon_name}</b><br>
+
+Type 1:
+${enemy.pokemon_type_1 || '-'}<br>
+
+Type 2:
+${enemy.pokemon_type_2 || '-'}<br>
+
+Weak To:
+${weakTo.join(', ')}
+
+`;
+
+const counters =
+ownedPokemon
+.filter(p =>
+
+weakTo.includes(p.pokemon_type_1) ||
+
+weakTo.includes(p.pokemon_type_2)
+
+)
+.sort((a,b)=>{
+
+if(b.rarity !== a.rarity)
+return b.rarity - a.rarity;
+
+return a.pokemon_name.localeCompare(
+b.pokemon_name
+);
+
+});
+
+let html='';
+
+if(counters.length===0){
+
+html=`
+<div class="none">
+No owned counters found.
+</div>
+`;
+
+}else{
+
+html='<div class="results">';
+
+counters.forEach(p=>{
+
+html += `
+
+<div class="pokemon-card">
+
+<div class="tag">
+${p.tag_code || ''}
+</div>
+
+<div class="name">
+${p.pokemon_name}
+</div>
+
+<div class="rarity">
+${'⭐'.repeat(p.rarity)}
+</div>
+
+<div class="type">
+${p.pokemon_type_1 || ''}
+${p.pokemon_type_2 ? ' / ' + p.pokemon_type_2 : ''}
+</div>
+
+<div class="version">
+Version ${p.version}
+</div>
+
+</div>
+
+`;
+
+});
+
+html+='</div>';
+
+}
+
+document.getElementById('results').innerHTML = html;
+
+}
+
+</script>
+
+</body>
+</html>
