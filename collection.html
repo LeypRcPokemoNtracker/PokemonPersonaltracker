@@ -150,7 +150,9 @@ Dashboard
 <div class="container">
 
 <div class="topbar">
-  
+  <button onclick="exportCollection()">
+ Export Collection
+</button>
 <button class="version-btn" onclick="loadOwned(this)">
 OWNED
 </button>
@@ -192,6 +194,7 @@ onkeyup="renderPokemon()">
 
 <option value="1"> ⚡ Specials 💥</option>
 
+
 </select>
 </div>
 
@@ -204,7 +207,68 @@ Loading...
 </div>
 
 <script>
+async function exportCollection(){
 
+const {data,error} = await db
+.from('pokemon_master')
+.select(`
+id,
+tag_code,
+pokemon_name,
+version,
+rarity,
+user_collection!left(
+owned,
+quantity,
+user_id
+)
+`);
+
+if(error){
+console.error(error);
+alert("Export failed.");
+return;
+}
+
+let csv =
+"tag_code,pokemon_name,version,rarity,owned,quantity\n";
+
+data.forEach(p=>{
+
+const record =
+(p.user_collection || [])
+.find(x=>x.user_id == Number(userId));
+
+const owned =
+record ? record.owned : false;
+
+const quantity =
+record ? record.quantity : 0;
+
+csv +=
+`${p.tag_code},"${p.pokemon_name}",${p.version},${p.rarity},${owned},${quantity}\n`;
+
+});
+
+const blob =
+new Blob([csv],{
+type:"text/csv;charset=utf-8;"
+});
+
+const link =
+document.createElement("a");
+
+link.href =
+URL.createObjectURL(blob);
+
+link.download =
+`Mezastar_Collection_${new Date().toISOString().slice(0,10)}.csv`;
+
+link.click();
+
+URL.revokeObjectURL(link.href);
+
+}
 const db = supabase.createClient(
 'https://dzbpzlkpjbascrjozcih.supabase.co',
 'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
