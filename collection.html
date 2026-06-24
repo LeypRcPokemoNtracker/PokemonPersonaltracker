@@ -140,7 +140,10 @@ Dashboard
 <div class="container">
 
 <div class="topbar">
-
+  
+<button class="version-btn" onclick="loadOwned(this)">
+OWNED
+</button>
 <button class="version-btn active" onclick="loadVersion(1,this)">
 V1
 </button>
@@ -243,6 +246,61 @@ return;
 pokemonList = data;
 
 renderPokemon();
+}
+  async function loadOwned(btn){
+
+    document
+    .querySelectorAll('.version-btn')
+    .forEach(x=>x.classList.remove('active'));
+
+    btn.classList.add('active');
+
+    await loadCollection();
+
+    const ownedIds =
+    Object.keys(ownedMap)
+    .filter(id => ownedMap[id].owned)
+    .map(id => Number(id));
+
+    if(ownedIds.length === 0){
+        pokemonList=[];
+        renderPokemon();
+        return;
+    }
+
+    const {data,error}=await db
+    .from('pokemon_master')
+    .select('*')
+    .in('id',ownedIds)
+    .order('rarity',{ascending:false})
+    .order('version')
+    .order('tag_code');
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    pokemonList=data;
+
+    renderPokemon();
+
+}
+
+
+async function loadCollection(){
+
+    const {data}=await db
+    .from('user_collection')
+    .select('*')
+    .eq('user_id',userId);
+
+    ownedMap={};
+
+    (data||[]).forEach(x=>{
+        ownedMap[x.pokemon_id]=x;
+    });
+
 }
 
 async function loadCollection(){
