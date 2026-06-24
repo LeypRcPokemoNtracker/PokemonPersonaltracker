@@ -338,13 +338,29 @@ ${p.tag_code
 `).join('');
 
 }
-  function selectPokemon(id){
+function selectPokemon(id){
+
+const enemy =
+allPokemon.find(x => x.id == id);
+
+if(!enemy) return;
+
+if(enemyTeam.length >= 3){
+alert('Maximum 3 enemies');
+return;
+}
+
+enemyTeam.push(enemy);
+
+renderEnemyTeam();
+
+document
+.getElementById('enemySearch')
+.value='';
 
 document
 .getElementById('searchResults')
 .innerHTML='';
-
-findCounters(id);
 
 }
 
