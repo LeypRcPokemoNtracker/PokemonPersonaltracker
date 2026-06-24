@@ -221,7 +221,7 @@ let pokemonList=[];
 let ownedMap={};
 let currentVersion=1;
 
-loadVersion(1);
+loadOwned();
 
 async function loadVersion(version,btn=null){
 
@@ -257,13 +257,15 @@ pokemonList = data;
 
 renderPokemon();
 }
-  async function loadOwned(btn){
+  async function loadOwned(btn=null){
 
     document
     .querySelectorAll('.version-btn')
     .forEach(x=>x.classList.remove('active'));
 
-    btn.classList.add('active');
+    if(btn){
+        btn.classList.add('active');
+    }
 
     await loadCollection();
 
