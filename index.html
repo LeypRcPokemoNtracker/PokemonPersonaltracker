@@ -1,163 +1,201 @@
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Mezastar Tracker</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
 body{
     font-family:Arial,sans-serif;
     background:#0f172a;
     color:white;
+    min-height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
-    min-height:100vh;
 }
 
-.card{
-    width:350px;
+.container{
+    width:400px;
     background:#1e293b;
-    padding:25px;
-    border-radius:12px;
+    padding:30px;
+    border-radius:15px;
+    box-shadow:0 0 20px rgba(0,0,0,.3);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#94a3b8;
+    margin-bottom:20px;
 }
 
 input{
     width:100%;
-    padding:10px;
-    margin-top:10px;
+    padding:12px;
     border:none;
-    border-radius:6px;
+    border-radius:8px;
+    margin-bottom:15px;
+    font-size:16px;
 }
 
 button{
     width:100%;
     padding:12px;
-    margin-top:10px;
     border:none;
-    border-radius:6px;
+    border-radius:8px;
+    color:white;
+    font-size:16px;
     cursor:pointer;
 }
 
-.signup{
-    background:#22c55e;
-    color:white;
+.primary{
+    background:#3b82f6;
 }
 
-.login{
-    background:#3b82f6;
-    color:white;
+.primary:hover{
+    background:#2563eb;
 }
 
 #status{
     margin-top:15px;
+    text-align:center;
+    min-height:20px;
 }
+
 </style>
 
 </head>
+
 <body>
 
-<div class="card">
+<div class="container">
 
-<h2>Mezastar Tracker</h2>
+```
+<h1>🎯 Mezastar Tracker</h1>
 
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
+<div class="subtitle">
+    Enter your username to continue
+</div>
 
-<button class="signup" onclick="signUp()">
-Register
-</button>
+<input
+    type="text"
+    id="username"
+    placeholder="Username"
+    autocomplete="off"
+>
 
-<button class="login" onclick="signIn()">
-Login
+<button
+    class="primary"
+    onclick="continueUser()"
+>
+    Continue
 </button>
 
 <div id="status"></div>
+```
 
 </div>
 
 <script>
 
-const db = supabase.createClient
-    ( 'https://dzbpzlkpjbascrjozcih.supabase.co', 
- 'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+const db = supabase.createClient(
+    'https://dzbpzlkpjbascrjozcih.supabase.co',
+    'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
 );
 
-async function signUp() {
+async function continueUser(){
 
-const email = document.getElementById('email').value.trim();
-const password = document.getElementById('password').value;
+    const username =
+        document.getElementById('username')
+        .value
+        .trim();
 
-try {
-
-    const { data, error } = await db.auth.signUp({
-        email,
-        password
-    });
-
-    console.log("SIGNUP DATA:", data);
-    console.log("SIGNUP ERROR:", error);
-
-    if (error) {
-        document.getElementById('status').innerText = error.message;
+    if(!username){
+        showStatus('Please enter a username');
         return;
     }
 
-    document.getElementById('status').innerText =
-        'Registration successful!';
+    showStatus('Checking account...');
 
-} catch (err) {
+    const { data: existingUser } = await db
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
 
-    console.error(err);
-    document.getElementById('status').innerText = err.message;
+    let user;
 
-}
+    if(existingUser){
 
-}
-async function signIn() {
+        user = existingUser;
 
+        showStatus('Welcome back ' + username);
 
-const email = document.getElementById('email').value.trim();
-const password = document.getElementById('password').value;
+    }else{
 
-try {
+        const { data, error } = await db
+            .from('users')
+            .insert({
+                username: username
+            })
+            .select()
+            .single();
 
-    const { error } = await db.auth.signInWithPassword({
-        email,
-        password
-    });
+        if(error){
+            showStatus(error.message);
+            return;
+        }
 
-    if (error) {
-        document.getElementById('status').innerText = error.message;
-        return;
+        user = data;
+
+        showStatus('Account created!');
     }
 
-    document.getElementById('status').innerText =
-        'Login successful!';
+    localStorage.setItem(
+        'user_id',
+        user.id
+    );
 
-    // Redirect after login
+    localStorage.setItem(
+        'username',
+        user.username
+    );
+
     setTimeout(() => {
-        window.location.href = 'dashboard.html';
+
+        window.location.href =
+            'dashboard.html';
+
     }, 1000);
-
-} catch (err) {
-
-    document.getElementById('status').innerText =
-        err.message;
-
-
-
-
 }
 
+function showStatus(message){
 
+    document.getElementById('status')
+        .innerText = message;
 }
 
 </script>
 
 </body>
+
 </html>
