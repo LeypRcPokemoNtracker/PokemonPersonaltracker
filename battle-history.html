@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width,initial-scale=1">
+
+<title>Battle History</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+}
+
+header{
+
+background:#1e293b;
+
+padding:15px;
+
+display:flex;
+
+justify-content:space-between;
+
+align-items:center;
+
+}
+
+.container{
+
+max-width:1400px;
+
+margin:auto;
+
+padding:20px;
+
+}
+
+.stats{
+
+display:grid;
+
+grid-template-columns:repeat(4,1fr);
+
+gap:15px;
+
+margin-bottom:25px;
+
+}
+
+.stat{
+
+background:#1e293b;
+
+padding:20px;
+
+border-radius:12px;
+
+text-align:center;
+
+}
+
+.stat h2{
+
+font-size:30px;
+
+margin-bottom:5px;
+
+}
+
+button{
+
+background:#3b82f6;
+
+color:white;
+
+border:none;
+
+padding:12px 18px;
+
+border-radius:8px;
+
+cursor:pointer;
+
+}
+
+.history{
+
+margin-top:25px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:15px;
+
+}
+
+.card{
+
+background:#1e293b;
+
+padding:18px;
+
+border-radius:12px;
+
+}
+
+.empty{
+
+padding:50px;
+
+text-align:center;
+
+opacity:.7;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>📖 Battle History</h2>
+
+<button
+onclick="location.href='dashboard.html'">
+
+Dashboard
+
+</button>
+
+</header>
+
+<div class="container">
+
+<div class="stats">
+
+<div class="stat">
+
+<h2 id="battleCount">0</h2>
+
+Battles
+
+</div>
+
+<div class="stat">
+
+<h2 id="wins">0</h2>
+
+Wins
+
+</div>
+
+<div class="stat">
+
+<h2 id="losses">0</h2>
+
+Losses
+
+</div>
+
+<div class="stat">
+
+<h2 id="winrate">0%</h2>
+
+Win Rate
+
+</div>
+
+</div>
+
+<button
+onclick="location.href='new-battle.html'">
+
+➕ New Battle
+
+</button>
+
+<div
+class="history"
+id="history">
+
+<div class="empty">
+
+No battles yet.
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const db =
+supabase.createClient(
+
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+
+);
+
+const userId =
+localStorage.getItem('user_id');
+
+if(!userId){
+
+location.href='index.html';
+
+}
+
+loadHistory();
+
+async function loadHistory(){
+
+const {data,error}=await db
+
+.from('battle_history')
+
+.select('*')
+
+.eq('user_id',Number(userId))
+
+.order('battle_date',{ascending:false});
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+document
+.getElementById("battleCount")
+.innerText=data.length;
+
+const wins=
+data.filter(x=>x.result=="Win").length;
+
+const losses=
+data.filter(x=>x.result=="Loss").length;
+
+document
+.getElementById("wins")
+.innerText=wins;
+
+document
+.getElementById("losses")
+.innerText=losses;
+
+const rate=
+
+data.length
+
+?
+
+((wins/data.length)*100)
+
+.toFixed(1)
+
+:0;
+
+document
+.getElementById("winrate")
+.innerText=rate+"%";
+
+if(data.length==0){
+
+return;
+
+}
+
+let html='';
+
+data.forEach(b=>{
+
+html+=`
+
+<div class="card">
+
+<h3>
+
+${b.result=="Win"?"🟢":"🔴"}
+
+${b.result}
+
+</h3>
+
+<div>
+
+${new Date(b.battle_date)
+
+.toLocaleString()}
+
+</div>
+
+<div>
+
+${b.notes||''}
+
+</div>
+
+</div>
+
+`;
+
+});
+
+document
+.getElementById("history")
+.innerHTML=html;
+
+}
+
+</script>
+
+</body>
+</html>
