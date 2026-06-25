@@ -139,20 +139,11 @@ Dashboard
 
 <div class="card">
 
-<h3>Enemy Team</h3>
+<h3>Enemy Pokémon</h3>
 
-<div id="enemyTeamBox"
-style="
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-margin-bottom:15px;
-">
-</div>
+<div id="enemyInfo"></div>
 
-<button onclick="buildBestTeam()">
-🤖 Auto Build Team
-</button>
+    
 
 <br><br>
 
@@ -180,7 +171,6 @@ overflow-y:auto;
 ">
 </div>
 
-<div class="enemy-info" id="enemyInfo"></div>
 
 </div>
 
@@ -245,8 +235,8 @@ location.href='index.html';
 
 let allPokemon = [];
 let ownedPokemon = [];
-let enemyTeam = [];
-  let recommendedTeam = [];
+let selectedEnemy = null;
+
   
 const weaknesses = {
 
@@ -386,181 +376,81 @@ ${p.tag_code
 }
 function selectPokemon(id){
 
-const enemy =
+selectedEnemy =
 allPokemon.find(x => x.id == id);
 
-if(!enemy) return;
+if(!selectedEnemy) return;
 
-if(enemyTeam.length >= 3){
-alert('Maximum 3 enemies');
-return;
-}
+document.getElementById("enemySearch").value="";
+document.getElementById("searchResults").innerHTML="";
 
-enemyTeam.push(enemy);
-
-renderEnemyTeam();
-
-document
-.getElementById('enemySearch')
-.value='';
-
-document
-.getElementById('searchResults')
-.innerHTML='';
+renderEnemyInfo();
+renderOwnedPokemon();
 
 }
   
-function renderEnemyTeam(){
 
-let html='';
 
-enemyTeam.forEach((p,index)=>{
 
-html += `
+function renderEnemyInfo(){
 
-<div style="
-background:#334155;
-padding:10px;
-border-radius:10px;
-">
-
-${p.pokemon_name}
-
-<button
-onclick="removeEnemy(${index})"
-style="
-margin-left:10px;
-background:red;
-">
-X
-</button>
-
-</div>
-
-`;
-
-});
-
-document
-.getElementById('enemyTeamBox')
-.innerHTML = html;
-
-}
-  function removeEnemy(index){
-
-enemyTeam.splice(index,1);
-
-renderEnemyTeam();
-
-}
-function buildBestTeam(){
-
-if(enemyTeam.length !== 3){
-
-alert("Please select exactly 3 enemy Pokémon.");
-
-return;
-
-}
-let enemyWeaknesses = [];
-
-enemyTeam.forEach(enemy=>{
-
-if(enemy.pokemon_type_1){
-
-enemyWeaknesses.push(
-...(weaknesses[enemy.pokemon_type_1] || [])
-);
-
-}
-
-if(enemy.pokemon_type_2){
-
-enemyWeaknesses.push(
-...(weaknesses[enemy.pokemon_type_2] || [])
-);
-
-}
-
-});
-
-const scored = ownedPokemon.map(p=>{
-
-let score = 0;
-
-enemyWeaknesses.forEach(type=>{
-
-if(
-p.pokemon_type_1 === type
-||
-p.pokemon_type_2 === type
-){
-score++;
-}
-
-});
-
-return {
-...p,
-score
-};
-
-});
-
-const bestTeam = scored
-.filter(x => x.score > 0)
-.sort((a,b)=>{
-
-if(b.score !== a.score)
-return b.score - a.score;
-
-if(b.rarity !== a.rarity)
-return b.rarity - a.rarity;
-
-return a.pokemon_name.localeCompare(
-b.pokemon_name
-);
-
-})
-.slice(0,3);
-
-recommendedTeam = bestTeam;
-
-renderBestTeam(bestTeam);
-}
-  
-  
-  function renderBestTeam(team){
-
-let html='';
-
-if(team.length===0){
-
-html=`
-<div class="none">
-No suitable team found.
-</div>
-`;
-
-}else{
-
-html='<div class="results">';
-
-team.forEach((p,index)=>{
-
-const medals =
-['🥇','🥈','🥉'];
-
-html += `
+document.getElementById("enemyInfo").innerHTML=`
 
 <div class="pokemon-card">
 
-<div style="
-font-size:24px;
-margin-bottom:10px;
+${selectedEnemy.image_url ? `
+<img
+src="${selectedEnemy.image_url}"
+style="
+width:120px;
+height:120px;
+object-fit:contain;
 ">
-${medals[index]}
+` : ""}
+
+<div class="tag">
+${selectedEnemy.tag_code}
 </div>
+
+<div class="name">
+${selectedEnemy.pokemon_name}
+</div>
+
+<div class="rarity">
+${"⭐".repeat(selectedEnemy.rarity)}
+</div>
+
+<div class="version">
+Version ${selectedEnemy.version}
+</div>
+
+</div>
+
+`;
+
+}
+  
+  
+  function renderOwnedPokemon(){
+
+const sorted=[...ownedPokemon]
+
+.sort((a,b)=>{
+
+if(b.rarity!==a.rarity)
+return b.rarity-a.rarity;
+
+return a.pokemon_name.localeCompare(b.pokemon_name);
+
+});
+
+let html='<div class="results">';
+
+sorted.forEach(p=>{
+
+html+=`
+
+<div class="pokemon-card">
 
 ${p.image_url ? `
 <img
@@ -571,27 +461,14 @@ height:150px;
 object-fit:contain;
 margin-bottom:10px;
 ">
-` : ''}
+` : ""}
 
-<div class="tag">
-${p.tag_code || ''}
-</div>
+<div class="tag">${p.tag_code}</div>
 
-<div class="name">
-${p.pokemon_name}
-</div>
+<div class="name">${p.pokemon_name}</div>
 
 <div class="rarity">
-${'⭐'.repeat(p.rarity)}
-</div>
-
-<div class="type">
-${p.pokemon_type_1 || ''}
-${p.pokemon_type_2 ? ' / ' + p.pokemon_type_2 : ''}
-</div>
-
-<div>
-Score: ${p.score}
+${"⭐".repeat(p.rarity)}
 </div>
 
 <div class="version">
@@ -604,33 +481,22 @@ Version ${p.version}
 
 });
 
-html+='</div>';
+html+="</div>";
 
-}
-
-document
-.getElementById('results')
-.innerHTML = html;
+document.getElementById("results").innerHTML=html;
 
 }
 
   async function saveBattle(){
+if(!selectedEnemy){
 
-if(enemyTeam.length !== 3){
-
-alert("Please select 3 enemy Pokémon.");
-
-return;
-
-}
-
-if(recommendedTeam.length !== 3){
-
-alert("Please build your team first.");
+alert("Select an enemy Pokémon.");
 
 return;
 
 }
+
+
 
 const result =
 document.getElementById("battleResult").value;
@@ -668,55 +534,24 @@ return;
 
 const battleId=data.id;
 
-for(let i=0;i<3;i++){
-
 await db
-
 .from("battle_enemy")
-
 .insert({
 
-battle_id:battleId,
-
-slot:i+1,
-
-pokemon_id:enemyTeam[i].id
+battle_id: battleId,
+slot: 1,
+pokemon_id: selectedEnemy.id
 
 });
-
-}
-
-for(let i=0;i<3;i++){
-
-await db
-
-.from("battle_team")
-
-.insert({
-
-battle_id:battleId,
-
-slot:i+1,
-
-pokemon_id:recommendedTeam[i].id
-
-});
-
-}
 
 alert("✅ Battle Saved!");
 
-enemyTeam=[];
-
-recommendedTeam=[];
-
-renderEnemyTeam();
+selectedEnemy = null;
 
 document.getElementById("results").innerHTML="";
-
 document.getElementById("battleNotes").value="";
-    document.getElementById("battleResult").selectedIndex = 0;
-    document.getElementById("enemySearch").value="";
+document.getElementById("battleResult").selectedIndex = 0;
+document.getElementById("enemySearch").value="";
 document.getElementById("searchResults").innerHTML="";
 document.getElementById("enemyInfo").innerHTML="";
 
