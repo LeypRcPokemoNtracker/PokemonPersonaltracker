@@ -73,7 +73,7 @@ background:white;
 color:black;
 min-width:170px;
 }
-}
+
 
 .progress{
 margin-bottom:20px;
@@ -213,6 +213,9 @@ Battle
 <div class="container">
 
 <div class="topbar">
+  <button onclick="openAddPokemon()">
+➕ Add Pokémon
+</button>
   <button onclick="exportCollection()">
  Export Collection
 </button>
@@ -355,8 +358,18 @@ let pokemonList=[];
 let ownedMap={};
 let currentVersion=1;
 
-loadOwned();
+loadVersion(
+1,
+document.querySelector(".version-btn.active")
+);
+  
+window.addEventListener("load",()=>{
 
+document
+.getElementById("addImageFile")
+.addEventListener("change",autoFillPokemon);
+
+});
 async function loadVersion(version,btn=null){
 
 currentVersion=version;
@@ -633,7 +646,314 @@ await loadCollection();
 
 }
 
-</script>
+// ← updateQty ENDS HERE
 
+function openAddPokemon(){
+
+document.getElementById("pokemonModal").style.display="flex";
+
+}
+
+function closeAddPokemon(){
+
+document.getElementById("pokemonModal").style.display="none";
+
+}
+
+  async function autoFillPokemon(e){
+
+const file=e.target.files[0];
+
+if(!file) return;
+
+const filename=file.name.replace(/\.[^/.]+$/,"");
+
+const parts=filename.split("_");
+
+if(parts.length>=2){
+
+document.getElementById("addTagCode").value=parts[0];
+
+document.getElementById("addPokemonName").value=
+parts.slice(1).join(" ");
+
+}
+
+}
+async function savePokemon(){
+
+const version =
+Number(document.getElementById("addCollection").value);
+
+const tag =
+document.getElementById("addTagCode").value.trim();
+
+const name =
+document.getElementById("addPokemonName").value.trim();
+
+const rarity =
+Number(document.getElementById("addRarity").value);
+
+let image=
+document.getElementById("addImage").value.trim();
+
+const file=
+document.getElementById("addImageFile").files[0];
+
+if(!tag || !name){
+
+alert("Tag Code and Pokémon Name are required.");
+
+return;
+
+}
+
+  const {
+data:existing,
+error:checkError
+}=await db
+.from("pokemon_master")
+.select("id")
+.eq("tag_code",tag)
+.maybeSingle();
+
+if(checkError){
+
+alert(checkError.message);
+
+return;
+
+}
+
+if(existing){
+
+alert("This Tag Code already exists.");
+
+return;
+
+}
+if(file){
+
+const ext=file.name.split(".").pop().toLowerCase();
+
+const fileName=
+`${tag}_${name}.${ext}`;
+
+const upload=await db.storage
+.from("pokemon-images")
+.upload(fileName,file,{upsert:true});
+
+if(upload.error){
+
+alert(upload.error.message);
+
+return;
+
+}
+
+image=db.storage
+.from("pokemon-images")
+.getPublicUrl(fileName)
+.data.publicUrl;
+
+}
+const {data,error}=await db
+.from("pokemon_master")
+.insert({
+
+tag_code:tag,
+
+pokemon_name:name,
+
+version:version,
+
+rarity:rarity,
+
+image_url:image || null
+
+})
+.select()
+.single();
+
+if(error){
+
+console.error(error);
+
+alert(error.message);
+
+return;
+
+}
+if(document.getElementById("markOwned").checked){
+
+await db
+.from("user_collection")
+.insert({
+
+user_id:Number(userId),
+
+pokemon_id:data.id,
+
+owned:true,
+
+quantity:1
+
+});
+await loadCollection();
+}
+alert("Pokémon added successfully!");
+
+closeAddPokemon();
+
+document.getElementById("addTagCode").value="";
+document.getElementById("addPokemonName").value="";
+document.getElementById("addImage").value="";
+document.getElementById("addImageFile").value="";
+document.getElementById("markOwned").checked=false;
+
+document.getElementById("addRarity").value=6;
+document.getElementById("addCollection").value=1;
+
+// Refresh current view
+
+if(currentVersion==="all"){
+
+loadVersion("all");
+
+}else{
+
+loadVersion(currentVersion);
+
+}
+
+}
+
+</script>
+<div
+id="pokemonModal"
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.75);
+justify-content:center;
+align-items:center;
+z-index:9999;
+">
+
+<div
+style="
+background:#1e293b;
+padding:25px;
+border-radius:12px;
+width:95%;
+max-width:700px;
+max-height:90%;
+overflow:auto;
+">
+
+<h2>Add Pokémon</h2>
+
+<br>
+
+<label>Collection *</label>
+
+<select
+id="addCollection"
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<option value="1">V1</option>
+<option value="2">V2</option>
+<option value="3">V3</option>
+<option value="4">🌌 Galaxy</option>
+<option value="5">🎁 Promo</option>
+
+</select>
+
+<label>Tag Code *</label>
+
+<input
+id="addTagCode"
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<label>Pokémon Name *</label>
+
+<input
+id="addPokemonName"
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<label>Pokémon Image (Optional)</label>
+
+<input
+type="file"
+id="addImageFile"
+accept="image/*"
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<br><br>
+
+<label>Or Image URL (Optional)</label>
+
+<input
+id="addImage"
+placeholder="https://..."
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<label>Rarity</label>
+
+<select
+id="addRarity"
+style="width:100%;padding:10px;margin-bottom:15px;">
+
+<option value="6">⭐⭐⭐⭐⭐⭐</option>
+<option value="5">⭐⭐⭐⭐⭐</option>
+<option value="4">⭐⭐⭐⭐</option>
+<option value="3">⭐⭐⭐</option>
+<option value="2">⭐⭐</option>
+<option value="1">✨ Special</option>
+
+</select>
+
+<label
+style="
+display:flex;
+align-items:center;
+gap:10px;
+margin-bottom:20px;
+">
+
+<input
+type="checkbox"
+id="markOwned">
+
+Mark as Owned immediately
+
+</label>
+
+<div
+style="
+display:flex;
+justify-content:flex-end;
+gap:10px;
+">
+
+<button
+onclick="closeAddPokemon()">
+Cancel
+</button>
+
+<button
+onclick="savePokemon()">
+Save Pokémon
+</button>
+
+</div>
+
+</div>
+
+</div>
 </body>
 </html>
