@@ -702,7 +702,7 @@ document.getElementById("moveModal").style.display="none";
 
 }
   async function saveNewMove(){
-
+console.log("saveNewMove called");
 const name =
 document.getElementById("newMoveName").value.trim();
 
@@ -753,7 +753,7 @@ if(error){
 
 console.error(error);
 
-alert(error.message);
+alert(JSON.stringify(error,null,2));
 
 return;
 
