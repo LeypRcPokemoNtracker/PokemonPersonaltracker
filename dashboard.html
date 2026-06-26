@@ -407,8 +407,7 @@ data.asset_name || "";
 document.getElementById(
 `supportType${slot}`
 ).value =
-data.asset_subtype || "Support";
-
+data.asset_category || "Support";
 }
 }
 
@@ -579,7 +578,7 @@ document.getElementById(
 :
 null,
 
-asset_subtype:
+asset_category:
 assetType.startsWith("support_")
 ?
 document.getElementById(
