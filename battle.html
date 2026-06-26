@@ -518,54 +518,38 @@ function renderOwnedPokemon(){
 
 let displayPokemon=[...ownedPokemon];
 
-if(selectedEnemy){
 
-let weakTo=[];
-
-if(selectedEnemy.pokemon_type_1){
-
-weakTo.push(
-...(weaknesses[selectedEnemy.pokemon_type_1]||[])
-);
-
-}
-
-if(selectedEnemy.pokemon_type_2){
-
-weakTo.push(
-...(weaknesses[selectedEnemy.pokemon_type_2]||[])
-);
-
-}
-
-weakTo=[...new Set(weakTo)];
-
-
-
-}
 
 displayPokemon.sort((a,b)=>{
 
-const aEffective =
-selectedEnemy &&
-(a.move_type || a.pokemon_type_1) &&
-(
-(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(a.move_type || a.pokemon_type_1)
+
+const aEffective = selectedEnemies.some(enemy => {
+
+const attackType =
+a.move_type || a.pokemon_type_1;
+
+return (
+(weaknesses[enemy.pokemon_type_1] || []).includes(attackType)
 ||
-(selectedEnemy.pokemon_type_2 &&
-(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(a.move_type || a.pokemon_type_1))
+(enemy.pokemon_type_2 &&
+(weaknesses[enemy.pokemon_type_2] || []).includes(attackType))
 );
 
-const bEffective =
-selectedEnemy &&
-(b.move_type || b.pokemon_type_1) &&
-(
-(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(b.move_type || b.pokemon_type_1)
+});
+
+const bEffective = selectedEnemies.some(enemy => {
+
+const attackType =
+b.move_type || b.pokemon_type_1;
+
+return (
+(weaknesses[enemy.pokemon_type_1] || []).includes(attackType)
 ||
-(selectedEnemy.pokemon_type_2 &&
-(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(b.move_type || b.pokemon_type_1))
+(enemy.pokemon_type_2 &&
+(weaknesses[enemy.pokemon_type_2] || []).includes(attackType))
 );
 
+});
 if(aEffective!==bEffective){
 
 return bEffective-aEffective;
@@ -626,13 +610,19 @@ p.move_name
 </div>
 
 ${
-selectedEnemy &&
-(
-(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(p.move_type || p.pokemon_type_1)
+selectedEnemies.some(enemy=>{
+
+const attackType =
+p.move_type || p.pokemon_type_1;
+
+return (
+(weaknesses[enemy.pokemon_type_1] || []).includes(attackType)
 ||
-(selectedEnemy.pokemon_type_2 &&
-(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(p.move_type || p.pokemon_type_1))
-)
+(enemy.pokemon_type_2 &&
+(weaknesses[enemy.pokemon_type_2] || []).includes(attackType))
+);
+
+})
 
 ?
 
@@ -670,8 +660,7 @@ document.getElementById("results").innerHTML=html;
 }
 
   async function saveBattle(){
-if(!selectedEnemy){
-
+if(selectedEnemies.length===0){
 alert("Select an enemy Pokémon.");
 
 return;
@@ -717,25 +706,34 @@ return;
 const battleId=data.id;
 
 await db
+
 .from("battle_enemy")
-.insert({
+
+.insert(
+
+selectedEnemies.map((enemy,index)=>({
 
 battle_id: battleId,
-slot: 1,
-pokemon_id: selectedEnemy.id
 
-});
+slot: index + 1,
+
+pokemon_id: enemy.id
+
+}))
+
+);
 
 alert("✅ Battle Saved!");
 
-selectedEnemy = null;
+selectedEnemies = [];
 
-document.getElementById("results").innerHTML="";
+renderEnemyInfo();
+
+renderOwnedPokemon();
 document.getElementById("battleNotes").value="";
 document.getElementById("battleResult").selectedIndex = 0;
 document.getElementById("enemySearch").value="";
 document.getElementById("searchResults").innerHTML="";
-document.getElementById("enemyInfo").innerHTML="";
 
 }
 
