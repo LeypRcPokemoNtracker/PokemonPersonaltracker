@@ -122,41 +122,36 @@ button{
 </div>
     <div class="card">
 
-    <h3>Navigation</h3>
+<h3 style="margin-bottom:15px;">
+🧭 Navigation
+</h3>
 
-    <br>
+<div class="actions">
 
-    <div class="actions">
+<button class="collection"
+onclick="window.location.href='collection.html'">
+📖 Collection
+</button>
 
-        <button
-            class="collection"
-            onclick="window.location.href='collection.html'"
-        >
-            Collection
-        </button>
-  <button
-            class="collection"
-            onclick="window.location.href='owned.html'"
-        >
-            Moveset Change(Own Pokemon)
-        </button>
-        <button
-            class="battle"
-            onclick="window.location.href='battle.html'"
-        >
-            Battle Helper
-        </button>
+<button class="collection"
+onclick="window.location.href='owned.html'">
+⚙️ Movesets
+</button>
 
-        <button
-            class="collection"
-            onclick="window.location.href='battle-history.html'"
-        >
-            History
-        </button>
+<button class="battle"
+onclick="window.location.href='battle.html'">
+⚔️ Battle Helper
+</button>
 
-    </div>
+<button class="collection"
+onclick="window.location.href='battle-history.html'">
+📜 History
+</button>
 
 </div>
+
+</div>
+    <hr class="divider">
 
 <div class="stats">
 
@@ -182,9 +177,31 @@ button{
     </div>
 
 </div>
-<div class="card">
+    <hr class="divider">
 
-<h2>📊 Collection Statistics</h2>
+<div class="card">
+<h2
+onclick="toggleCollectionStats()"
+style="
+cursor:pointer;
+display:flex;
+justify-content:space-between;
+align-items:center;
+user-select:none;
+">
+
+<span>📊 Collection Statistics</span>
+
+<span id="collectionArrow">►</span>
+
+</h2>
+
+<div
+id="collectionContainer"
+style="
+display:none;
+margin-top:20px;
+">
 
 <br>
 
@@ -290,6 +307,7 @@ transition:.4s;
 <div id="versionStats"></div>
 
 </div>
+<hr class="divider">
 
 <!-- PASTE HERE -->
 
@@ -356,6 +374,8 @@ accept="image/*">
 </div>
 
 </div>
+    <hr class="divider">
+
 <div class="card">
 
 <h2
