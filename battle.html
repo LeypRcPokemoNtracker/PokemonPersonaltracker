@@ -285,13 +285,15 @@ return;
 allPokemon = data;
 
 }
-
 async function loadOwnedPokemon(){
 
 const {data,error} = await db
-.from('user_collection')
+
+.from("user_collection")
+
 .select(`
 pokemon_id,
+
 pokemon_master(
 id,
 tag_code,
@@ -301,20 +303,54 @@ rarity,
 pokemon_type_1,
 pokemon_type_2,
 image_url
+),
 
+user_tag_config(
+move_id,
+notes,
+mezastar_moves(
+move_name,
+move_type
 )
+)
+
 `)
-.eq('user_id', Number(userId))
-.eq('owned', true);
+
+.eq("user_id",Number(userId))
+.eq("owned",true);
 
 if(error){
-console.error(error);
+
+console.log(error);
+
 return;
-}
-
-ownedPokemon = data.map(x=>x.pokemon_master);
 
 }
+
+ownedPokemon=data.map(x=>{
+    
+console.log(ownedPokemon);
+const config=x.user_tag_config?.[0];
+
+return{
+
+...x.pokemon_master,
+
+move_name:
+config?.mezastar_moves?.move_name || null,
+
+move_type:
+config?.mezastar_moves?.move_type || null,
+
+notes:
+config?.notes || ""
+
+};
+
+});
+
+}
+
 function searchPokemon(){
 
 const search =
