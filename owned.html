@@ -401,16 +401,22 @@ async function loadOwnedPokemon(){
     .from("user_collection")
 
     .select(`
-        pokemon_id,
-        pokemon_master(
-            id,
-            pokemon_name,
-            tag_code,
-            version,
-            rarity,
-            image_url
-        )
-    `)
+pokemon_id,
+pokemon_master(
+id,
+tag_code,
+pokemon_name,
+version,
+rarity,
+image_url,
+move_id,
+mezastar_moves(
+id,
+move_name,
+move_type
+)
+)
+`)
 
     .eq("user_id",Number(userId))
     .eq("owned",true);
@@ -557,8 +563,10 @@ function renderCards(){
 
     list.forEach(p=>{
 
-        const config=
-        tagConfigs.find(x=>x.pokemon_id===p.id);
+        const config =
+tagConfigs.find(x=>x.pokemon_id===p.id);
+
+const moveId = p.move_id;
 
         html+=`
 
@@ -619,8 +627,7 @@ ${moves.map(m=>`
 
 <option
 value="${m.id}"
-${config && config.move_id==m.id ? "selected" : ""}
->
+${moveId == m.id ? "selected" : ""}>
 
 ${m.move_name}
 (${m.move_type})
@@ -762,26 +769,40 @@ return;
 }
 
 moveId=data.id;
+}
 
-// Reload moves
+  // Reload moves
 await loadMoves();
 
+// Save the selected move globally
+const { error: updateError } = await db
+
+.from("pokemon_master")
+
+.update({
+
+    move_id: moveId
+
+})
+
+.eq("id", currentPokemonId);
+if(updateError){
+
+    console.error(updateError);
+
+    alert("Failed to assign the move to this Pokémon.");
+
+    return;
+
 }
+// Reload owned Pokémon
+await loadOwnedPokemon();
 
 // Close modal
 closeMoveModal();
 
-// Re-render cards
+// Refresh screen
 renderCards();
-
-// Select the move automatically
-const select =
-document.getElementById(`move-${currentPokemonId}`);
-
-select.value = moveId;
-
-// Save immediately
-saveConfig(currentPokemonId);
 
 }
 async function saveConfig(pokemonId){
@@ -799,36 +820,52 @@ async function saveConfig(pokemonId){
 
     status.innerHTML="💾 Saving...";
 
-    const {error}=await db
+   const {error:moveError}=await db
 
-    .from("user_tag_config")
+.from("pokemon_master")
 
-    .upsert({
+.update({
 
-        user_id:Number(userId),
+move_id: move ? Number(move) : null
 
-        pokemon_id:pokemonId,
+})
 
-move_id: move ? Number(move) : null,
-        notes:notes
+.eq("id",pokemonId);
+  const {error:notesError}=await db
 
-    },{
-        onConflict:"user_id,pokemon_id"
-    });
+.from("user_tag_config")
 
-    if(error){
+.upsert({
 
-    console.error(error);
+user_id:Number(userId),
 
-    alert(error.message);
+pokemon_id:pokemonId,
 
-    status.innerHTML="❌ Failed";
+notes:notes
 
-    return;
+},{
+onConflict:"user_id,pokemon_id"
+});
 
-}
+    // <<<<<< THIS IS WHERE IT GOES >>>>>>
+    if(moveError || notesError){
 
-    status.innerHTML="✅ Saved";
+        console.error(moveError || notesError);
+
+        alert("Save failed.");
+
+        status.innerHTML = "❌ Failed";
+
+        return;
+
+    }
+
+    // Refresh data
+    await loadTagConfigs();
+
+    renderCards();
+
+    status.innerHTML = "✅ Saved";
 
     setTimeout(()=>{
 
