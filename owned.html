@@ -357,6 +357,378 @@ let moves=[];
 
 let tagConfigs=[];
 
+  // PASTE PART 1B HERE
+  // --------------------
+// INITIALIZE
+// --------------------
+
+init();
+
+async function init(){
+
+    await Promise.all([
+        loadOwnedPokemon(),
+        loadMoves(),
+        loadTagConfigs()
+    ]);
+
+    renderCards();
+
+    document
+    .getElementById("search")
+    .addEventListener("input",renderCards);
+
+    document
+    .getElementById("versionFilter")
+    .addEventListener("change",renderCards);
+
+    document
+    .getElementById("rarityFilter")
+    .addEventListener("change",renderCards);
+
+}
+
+// --------------------
+// LOAD OWNED POKEMON
+// --------------------
+
+async function loadOwnedPokemon(){
+
+    const {data,error}=await db
+
+    .from("user_collection")
+
+    .select(`
+        pokemon_id,
+        pokemon_master(
+            id,
+            pokemon_name,
+            tag_code,
+            version,
+            rarity,
+            image_url
+        )
+    `)
+
+    .eq("user_id",Number(userId))
+    .eq("owned",true);
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+    ownedPokemon=data.map(x=>x.pokemon_master);
+
+}
+
+// --------------------
+// LOAD MOVES
+// --------------------
+
+async function loadMoves(){
+
+    const {data,error}=await db
+
+    .from("mezastar_moves")
+
+    .select("*")
+
+    .order("move_name");
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+    moves=data;
+
+}
+
+// --------------------
+// LOAD CONFIGS
+// --------------------
+
+async function loadTagConfigs(){
+
+    const {data,error}=await db
+
+    .from("user_tag_config")
+
+    .select("*")
+
+    .eq("user_id",Number(userId));
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+    tagConfigs=data;
+
+}
+
+// --------------------
+// RENDER CARDS
+// --------------------
+
+function renderCards(){
+
+    const search=document
+    .getElementById("search")
+    .value
+    .toLowerCase();
+
+    const version=document
+    .getElementById("versionFilter")
+    .value;
+
+    const rarity=document
+    .getElementById("rarityFilter")
+    .value;
+
+    let list=[...ownedPokemon];
+
+    if(search){
+
+        list=list.filter(p=>
+
+            p.pokemon_name
+            .toLowerCase()
+            .includes(search)
+
+            ||
+
+            (p.tag_code||"")
+            .toLowerCase()
+            .includes(search)
+
+        );
+
+    }
+
+    if(version!="All"){
+
+        list=list.filter(p=>String(p.version)==version);
+
+    }
+
+    if(rarity!="All"){
+
+        list=list.filter(p=>String(p.rarity)==rarity);
+
+    }
+
+    list.sort((a,b)=>{
+
+        if(b.rarity!==a.rarity)
+        return b.rarity-a.rarity;
+
+        return a.pokemon_name.localeCompare(b.pokemon_name);
+
+    });
+
+    const container=document.getElementById("cards");
+
+    if(list.length===0){
+
+        container.innerHTML=`
+        <div class="empty">
+        No owned Pokémon found.
+        </div>
+        `;
+
+        return;
+
+    }
+
+    let html="";
+
+    list.forEach(p=>{
+
+        const config=
+        tagConfigs.find(x=>x.pokemon_id===p.id);
+
+        html+=`
+
+        <div class="card">
+
+            <div class="image">
+
+                ${
+                p.image_url
+                ?
+                `<img src="${p.image_url}">`
+                :
+                ""
+                }
+
+            </div>
+
+            <div class="name">
+
+                ${p.pokemon_name}
+
+            </div>
+
+            <div class="tag">
+
+                ${p.tag_code||""}
+
+            </div>
+
+            <div class="version">
+
+                Version ${p.version}
+
+            </div>
+
+            <div class="rarity">
+
+                ${"⭐".repeat(p.rarity)}
+
+            </div>
+
+            <label>
+
+                Move
+
+            </label>
+
+            <select
+
+                class="moveSelect"
+
+                onchange="saveConfig(${p.id})"
+
+                id="move-${p.id}"
+
+            >
+
+                <option value="">
+
+                Not Assigned
+
+                </option>
+
+                ${moves.map(m=>`
+
+                <option
+
+                value="${m.id}"
+
+                ${config&&config.move_id==m.id?"selected":""}
+
+                >
+
+                ${m.move_name}
+
+                (${m.move_type})
+
+                </option>
+
+                `).join("")}
+
+            </select>
+
+            <label>
+
+                Notes
+
+            </label>
+
+            <textarea
+
+                id="notes-${p.id}"
+
+                onblur="saveConfig(${p.id})"
+
+            >${config?.notes||""}</textarea>
+
+            <div
+
+                class="status"
+
+                id="status-${p.id}"
+
+            ></div>
+
+        </div>
+
+        `;
+
+    });
+
+    container.innerHTML=html;
+
+}
+
+// --------------------
+// AUTO SAVE
+// --------------------
+
+async function saveConfig(pokemonId){
+
+    const move=document
+    .getElementById(`move-${pokemonId}`)
+    .value;
+
+    const notes=document
+    .getElementById(`notes-${pokemonId}`)
+    .value;
+
+    const status=document
+    .getElementById(`status-${pokemonId}`);
+
+    status.innerHTML="💾 Saving...";
+
+    const {error}=await db
+
+    .from("user_tag_config")
+
+    .upsert({
+
+        user_id:Number(userId),
+
+        pokemon_id:pokemonId,
+
+        move_id:move||null,
+
+        notes:notes
+
+    },{
+        onConflict:"user_id,pokemon_id"
+    });
+
+    if(error){
+
+        console.log(error);
+
+        status.innerHTML="❌ Failed";
+
+        return;
+
+    }
+
+    status.innerHTML="✅ Saved";
+
+    setTimeout(()=>{
+
+        status.innerHTML="";
+
+    },2000);
+
+}
+
 </script>
 
 </body>
