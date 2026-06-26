@@ -502,17 +502,19 @@ document.getElementById('grid')
 
 }
 
-async function toggleOwned(pokemonId,owned){
+async function toggleOwned(pokemonId, owned){
 
-const qty=
+if(owned){
+
+const qty =
 ownedMap[pokemonId]?.quantity || 1;
 
-const {error}=await db
+const {error} = await db
 .from('user_collection')
 .upsert({
 user_id:Number(userId),
 pokemon_id:pokemonId,
-owned:owned,
+owned:true,
 quantity:qty
 });
 
@@ -521,24 +523,45 @@ console.error(error);
 return;
 }
 
-await loadCollection();
-renderPokemon();
+}else{
+
+const {error} = await db
+.from('user_collection')
+.delete()
+.eq('user_id', Number(userId))
+.eq('pokemon_id', pokemonId);
+
+if(error){
+console.error(error);
+return;
+}
 
 }
 
-async function updateQty(pokemonId,qty){
+await loadCollection();
 
-const owned=
-ownedMap[pokemonId]?.owned || false;
+// If currently viewing OWNED, refresh the list
+if(document.querySelector(".version-btn.active")?.textContent.trim() === "OWNED"){
+await loadOwned(document.querySelector(".version-btn.active"));
+}else{
+renderPokemon();
+}
+
+}
+
+async function updateQty(pokemonId, qty){
+
+if(!ownedMap[pokemonId]?.owned){
+return;
+}
 
 const {error}=await db
 .from('user_collection')
-.upsert({
-user_id:Number(userId),
-pokemon_id:pokemonId,
-owned:owned,
+.update({
 quantity:Number(qty)
-});
+})
+.eq('user_id', Number(userId))
+.eq('pokemon_id', pokemonId);
 
 if(error){
 console.error(error);
