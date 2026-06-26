@@ -432,6 +432,7 @@ if(!userId){
 document.getElementById('welcome')
     .innerText =
     `Welcome, ${username}`;
+loadCollectionStatsState();
 
 loadStats();
 loadTrainerAssets();
@@ -974,7 +975,73 @@ document.getElementById("imageModal").style.display = "none";
 
 }
 
-    function toggleSupportCards(){
+function toggleCollectionStats(){
+
+const container =
+document.getElementById("collectionContainer");
+
+const arrow =
+document.getElementById("collectionArrow");
+
+const isOpen =
+container.style.display==="block";
+
+if(isOpen){
+
+container.style.display="none";
+arrow.innerHTML="►";
+
+localStorage.setItem(
+"collectionStatsOpen",
+"false"
+);
+
+}else{
+
+container.style.display="block";
+arrow.innerHTML="▼";
+
+localStorage.setItem(
+"collectionStatsOpen",
+"true"
+);
+
+}
+
+}
+
+function loadCollectionStatsState(){
+
+const opened=
+localStorage.getItem(
+"collectionStatsOpen"
+);
+
+const container=
+document.getElementById(
+"collectionContainer"
+);
+
+const arrow=
+document.getElementById(
+"collectionArrow"
+);
+
+if(opened==="true"){
+
+container.style.display="block";
+arrow.innerHTML="▼";
+
+}else{
+
+container.style.display="none";
+arrow.innerHTML="►";
+
+}
+
+}
+
+function toggleSupportCards(){
 
 const container =
 document.getElementById("supportContainer");
