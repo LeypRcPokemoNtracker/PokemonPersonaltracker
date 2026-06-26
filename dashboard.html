@@ -183,7 +183,82 @@ button{
     </div>
 
 </div>
+<!-- PASTE HERE -->
 
+<div class="card">
+
+<h2>👤 Trainer Assets</h2>
+
+<br>
+
+<div class="stats">
+
+<div class="stat">
+
+<h3>🪪 Trainer ID</h3>
+
+<br>
+
+<img
+id="trainerIdImg"
+style="
+width:100%;
+height:220px;
+object-fit:contain;
+background:#0f172a;
+border-radius:10px;
+display:none;
+cursor:pointer;
+">
+
+<input
+type="file"
+id="trainerIdFile"
+accept="image/*">
+
+</div>
+
+<div class="stat">
+
+<h3>⚡ Dynamax QR</h3>
+
+<br>
+
+<img
+id="dynamaxImg"
+style="
+width:100%;
+height:220px;
+object-fit:contain;
+background:#0f172a;
+border-radius:10px;
+display:none;
+cursor:pointer;
+">
+
+<input
+type="file"
+id="dynamaxFile"
+accept="image/*">
+
+</div>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>🃏 Support Cards</h2>
+
+<br>
+
+<div
+id="supportCards"
+class="stats">
+</div>
+
+</div>
 </div>
 
 <script>
@@ -198,7 +273,7 @@ const userId =
 
 const username =
     localStorage.getItem('username');
-
+const STORAGE_BUCKET = "trainer-assets";
 if(!userId){
 
     window.location.href =
@@ -211,7 +286,7 @@ document.getElementById('welcome')
     `Welcome, ${username}`;
 
 loadStats();
-
+loadTrainerAssets();
 async function loadStats(){
 
     const { count: total } =
@@ -252,7 +327,92 @@ async function loadStats(){
     ).innerText =
         percent + '%';
 }
+async function loadTrainerAssets(){
 
+await loadTrainerImage(
+"trainer_id",
+"trainerIdImg"
+);
+
+await loadTrainerImage(
+"dynamax_qr",
+"dynamaxImg"
+);
+
+loadSupportCards();
+
+}
+
+async function loadTrainerImage(type,imgId){
+
+const {data}=await db
+
+.from("trainer_assets")
+
+.select("*")
+
+.eq("user_id",Number(userId))
+
+.eq("asset_type",type)
+
+.single();
+
+if(!data) return;
+
+const img =
+document.getElementById(imgId);
+
+img.src=data.image_url;
+
+img.style.display="block";
+
+}
+
+async function loadSupportCards(){
+
+const holder =
+document.getElementById("supportCards");
+
+holder.innerHTML="";
+
+for(let i=1;i<=15;i++){
+
+holder.innerHTML+=`
+
+<div class="stat">
+
+<h3>Support Card ${i}</h3>
+
+<br>
+
+<img
+
+id="supportImg${i}"
+
+style="
+width:100%;
+height:180px;
+object-fit:contain;
+background:#0f172a;
+border-radius:10px;
+display:none;
+">
+
+<input
+
+type="file"
+
+id="supportFile${i}"
+
+accept="image/*">
+
+</div>
+
+`;
+
+}
+
+}
 function logout(){
 
     localStorage.clear();
