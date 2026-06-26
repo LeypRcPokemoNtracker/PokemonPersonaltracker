@@ -363,7 +363,32 @@ let currentPokemonId = null;
   // --------------------
 // INITIALIZE
 // --------------------
+function typeEmoji(type){
 
+const map = {
+Fire:"🔥",
+Water:"💧",
+Grass:"🌿",
+Electric:"⚡",
+Dragon:"🐉",
+Steel:"⚙️",
+Psychic:"🧠",
+Dark:"🌑",
+Fairy:"🧚",
+Rock:"🪨",
+Ground:"🌎",
+Ice:"❄️",
+Flying:"🕊️",
+Ghost:"👻",
+Bug:"🐛",
+Poison:"☠️",
+Normal:"⚪",
+Fighting:"👊"
+};
+
+return map[type] || "❔";
+
+}
 init();
 
 async function init(){
@@ -629,6 +654,7 @@ ${moves.map(m=>`
 value="${m.id}"
 ${moveId == m.id ? "selected" : ""}>
 
+${typeEmoji(m.move_type)}
 ${m.move_name}
 (${m.move_type})
 
