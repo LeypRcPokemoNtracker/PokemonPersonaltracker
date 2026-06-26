@@ -239,6 +239,9 @@ V3
   <button class="version-btn" onclick="loadVersion(5,this)">
 Promos
 </button>
+  <button class="version-btn" onclick="loadVersion(6,this)">
+🌍 Others
+</button>
   
   <button class="version-btn" onclick="loadVersion('all',this)"> 
     ALL 
@@ -528,7 +531,14 @@ alt="${p.pokemon_name}">
 ` : ''}
 
 <div class="tag">
-${p.tag_code || ''}
+${{
+1:"🇵🇭 V1",
+2:"🇵🇭 V2",
+3:"🇵🇭 V3",
+4:"🌌 Galaxy",
+5:"🎁 Promo",
+6:"🌍 Others"
+}[p.version]}
 </div>
 
 <div class="name">
@@ -870,6 +880,7 @@ style="width:100%;padding:10px;margin-bottom:15px;">
 <option value="3">V3</option>
 <option value="4">🌌 Galaxy</option>
 <option value="5">🎁 Promo</option>
+  <option value="6">🌍 Others</option>
 
 </select>
 
