@@ -120,33 +120,7 @@ button{
     </h2>
 
 </div>
-
-<div class="stats">
-
-    <div class="stat">
-        <div>Total Pokémon</div>
-        <div class="big" id="totalPokemon">
-            0
-        </div>
-    </div>
-
-    <div class="stat">
-        <div>Collected</div>
-        <div class="big" id="collectedPokemon">
-            0
-        </div>
-    </div>
-
-    <div class="stat">
-        <div>Completion</div>
-        <div class="big" id="completion">
-            0%
-        </div>
-    </div>
-
-</div>
-
-<div class="card">
+    <div class="card">
 
     <h3>Navigation</h3>
 
@@ -183,6 +157,140 @@ button{
     </div>
 
 </div>
+
+<div class="stats">
+
+    <div class="stat">
+        <div>Total Pokémon</div>
+        <div class="big" id="totalPokemon">
+            0
+        </div>
+    </div>
+
+    <div class="stat">
+        <div>Collected</div>
+        <div class="big" id="collectedPokemon">
+            0
+        </div>
+    </div>
+
+    <div class="stat">
+        <div>Completion</div>
+        <div class="big" id="completion">
+            0%
+        </div>
+    </div>
+
+</div>
+<div class="card">
+
+<h2>📊 Collection Statistics</h2>
+
+<br>
+
+<h3>Overall Progress</h3>
+
+<div
+style="
+background:#334155;
+border-radius:8px;
+overflow:hidden;
+height:22px;
+margin:10px 0;
+">
+
+<div
+id="overallBar"
+style="
+height:100%;
+width:0%;
+background:#22c55e;
+transition:.4s;
+">
+</div>
+
+</div>
+
+<div id="overallText">
+0 / 0 (0%)
+</div>
+
+<br>
+
+<div class="stats">
+
+<div class="stat">
+
+<h3>⭐⭐⭐⭐⭐⭐</h3>
+
+<div class="big" id="stat6">
+0 / 0
+</div>
+
+</div>
+
+<div class="stat">
+
+<h3>⭐⭐⭐⭐⭐</h3>
+
+<div class="big" id="stat5">
+0 / 0
+</div>
+
+</div>
+
+<div class="stat">
+
+<h3>⭐⭐⭐⭐</h3>
+
+<div class="big" id="stat4">
+0 / 0
+</div>
+
+</div>
+
+<div class="stat">
+
+<h3>⭐⭐⭐</h3>
+
+<div class="big" id="stat3">
+0 / 0
+</div>
+
+</div>
+
+<div class="stat">
+
+<h3>⭐⭐</h3>
+
+<div class="big" id="stat2">
+0 / 0
+</div>
+
+</div>
+
+<div class="stat">
+
+<h3>Specials ✨ </h3>
+
+<div class="big" id="stat1">
+0 / 0
+</div>
+
+</div>
+
+</div>
+
+<br>
+
+<h3>📚 Version Progress</h3>
+
+<br>
+
+<div id="versionStats"></div>
+
+</div>
+
 <!-- PASTE HERE -->
 
 <div class="card">
@@ -348,14 +456,15 @@ async function loadStats(){
             head:true
         });
 
-    const { count: collected } =
-        await db
-        .from('user_collection')
-        .select('*', {
-            count:'exact',
-            head:true
-        })
-        .eq('user_id', userId);
+ const { count: collected } =
+await db
+.from('user_collection')
+.select('*',{
+count:'exact',
+head:true
+})
+.eq('user_id', Number(userId))
+.eq('owned', true);
 
     document.getElementById(
         'totalPokemon'
@@ -377,6 +486,171 @@ async function loadStats(){
         'completion'
     ).innerText =
         percent + '%';
+    await loadCollectionStatistics();
+}
+    async function loadCollectionStatistics(){
+
+const {data}=await db
+
+.from("pokemon_master")
+
+.select(`
+id,
+rarity,
+version,
+user_collection(
+owned,
+user_id
+)
+`);
+
+const rarityStats={
+1:{owned:0,total:0},
+2:{owned:0,total:0},
+3:{owned:0,total:0},
+4:{owned:0,total:0},
+5:{owned:0,total:0},
+6:{owned:0,total:0}
+};
+
+const versionStats={};
+
+let owned=0;
+
+data.forEach(p=>{
+
+rarityStats[p.rarity].total++;
+
+if(!versionStats[p.version]){
+
+versionStats[p.version]={
+owned:0,
+total:0
+};
+
+}
+
+versionStats[p.version].total++;
+
+const mine=(p.user_collection||[])
+
+.find(x=>x.user_id==Number(userId)&&x.owned);
+
+if(mine){
+
+owned++;
+
+rarityStats[p.rarity].owned++;
+
+versionStats[p.version].owned++;
+
+}
+
+});
+
+for(let i=1;i<=6;i++){
+
+document.getElementById(
+
+`stat${i}`
+
+).innerHTML=
+
+`${rarityStats[i].owned} / ${rarityStats[i].total}`;
+
+}
+
+const percent =
+data.length
+? ((owned/data.length)*100).toFixed(1)
+: 0;
+
+document.getElementById("overallBar").style.width=
+
+percent+"%";
+
+document.getElementById("overallText").innerHTML=
+
+`${owned} / ${data.length} (${percent}%)`;
+
+const versionNames={
+
+1:"V1",
+
+2:"V2",
+
+3:"V3",
+
+4:"🌌 Galaxy",
+
+5:"🎁 Promo"
+
+};
+
+let html="";
+
+Object.keys(versionStats)
+.map(Number)
+.sort((a,b)=>a-b)
+
+.forEach(v=>{
+
+const p=(
+
+versionStats[v].owned/
+
+versionStats[v].total
+
+*100
+
+).toFixed(0);
+
+html+=`
+
+<div style="margin-bottom:18px;">
+
+<div style="display:flex;justify-content:space-between;">
+
+<b>${versionNames[v] || "Version "+v}</b>
+
+<span>
+
+${versionStats[v].owned}/${versionStats[v].total}
+
+</span>
+
+</div>
+
+<div style="
+background:#334155;
+height:14px;
+border-radius:8px;
+overflow:hidden;
+margin-top:6px;
+">
+
+<div style="
+width:${p}%;
+height:100%;
+background:#3b82f6;
+">
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+document.getElementById(
+
+"versionStats"
+
+).innerHTML=html;
+
 }
 async function loadTrainerAssets(){
 
@@ -532,7 +806,10 @@ await loadTrainerImage(
 if(!file) return;
 
 const extension =
-file.name.split(".").pop();
+file.name
+.split(".")
+.pop()
+.toLowerCase();
 
 const fileName =
 `${userId}/${assetType}.${extension}`;
