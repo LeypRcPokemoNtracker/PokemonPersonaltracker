@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Tags</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#0f172a;
+color:white;
+min-height:100vh;
+}
+
+header{
+background:#1e293b;
+padding:15px 25px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+
+header h2{
+font-size:24px;
+}
+
+header div{
+display:flex;
+gap:10px;
+}
+
+button{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:8px;
+cursor:pointer;
+font-size:14px;
+transition:.2s;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+.container{
+max-width:1600px;
+margin:auto;
+padding:25px;
+}
+
+.filters{
+
+display:flex;
+gap:15px;
+flex-wrap:wrap;
+margin-bottom:25px;
+
+}
+
+.filters input,
+.filters select{
+
+padding:12px;
+border:none;
+border-radius:8px;
+font-size:15px;
+background:#1e293b;
+color:white;
+
+}
+
+.filters input{
+
+flex:1;
+min-width:250px;
+
+}
+
+.grid{
+
+display:grid;
+
+grid-template-columns:
+repeat(auto-fill,minmax(320px,1fr));
+
+gap:20px;
+
+}
+
+.card{
+
+background:#1e293b;
+
+border-radius:14px;
+
+padding:18px;
+
+box-shadow:0 3px 10px rgba(0,0,0,.35);
+
+display:flex;
+
+flex-direction:column;
+
+}
+
+.image{
+
+height:180px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+margin-bottom:10px;
+
+}
+
+.image img{
+
+max-width:100%;
+
+max-height:170px;
+
+object-fit:contain;
+
+}
+
+.name{
+
+font-size:22px;
+
+font-weight:bold;
+
+margin-bottom:6px;
+
+}
+
+.tag{
+
+color:#94a3b8;
+
+margin-bottom:6px;
+
+}
+
+.version{
+
+color:#38bdf8;
+
+margin-bottom:6px;
+
+}
+
+.rarity{
+
+color:#facc15;
+
+margin-bottom:15px;
+
+}
+
+label{
+
+font-size:13px;
+
+margin-bottom:5px;
+
+color:#cbd5e1;
+
+}
+
+.moveSelect{
+
+width:100%;
+
+padding:10px;
+
+border:none;
+
+border-radius:8px;
+
+background:#334155;
+
+color:white;
+
+margin-bottom:12px;
+
+}
+
+textarea{
+
+width:100%;
+
+height:80px;
+
+padding:10px;
+
+background:#334155;
+
+border:none;
+
+border-radius:8px;
+
+color:white;
+
+resize:vertical;
+
+}
+
+.status{
+
+margin-top:10px;
+
+font-size:13px;
+
+color:#22c55e;
+
+height:18px;
+
+}
+
+.empty{
+
+text-align:center;
+
+padding:80px;
+
+font-size:22px;
+
+color:#94a3b8;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>🏷️ My Tags</h2>
+
+<div>
+
+<button onclick="location.href='dashboard.html'">
+
+Dashboard
+
+</button>
+
+<button onclick="location.href='collection.html'">
+
+Collection
+
+</button>
+
+<button onclick="location.href='battle.html'">
+
+Battle Helper
+
+</button>
+
+</div>
+
+</header>
+
+<div class="container">
+
+<div class="filters">
+
+<input
+type="text"
+id="search"
+placeholder="Search Pokémon or Tag Code..."
+>
+
+<select id="versionFilter">
+
+<option value="All">All Versions</option>
+
+<option value="1">V1</option>
+
+<option value="2">V2</option>
+
+<option value="3">V3</option>
+
+</select>
+
+<select id="rarityFilter">
+
+<option value="All">All Rarities</option>
+
+<option value="6">⭐⭐⭐⭐⭐⭐</option>
+
+<option value="5">⭐⭐⭐⭐⭐</option>
+
+<option value="4">⭐⭐⭐⭐</option>
+
+<option value="1">⭐ Special</option>
+
+</select>
+
+</div>
+
+<div id="cards" class="grid">
+
+<div class="empty">
+
+Loading your tags...
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const db = supabase.createClient(
+
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+
+);
+
+const userId = localStorage.getItem("user_id");
+
+if(!userId){
+
+location.href="index.html";
+
+}
+
+let ownedPokemon=[];
+
+let moves=[];
+
+let tagConfigs=[];
+
+</script>
+
+</body>
+
+</html>
