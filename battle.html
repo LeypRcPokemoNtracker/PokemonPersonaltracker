@@ -143,10 +143,8 @@ Movesets
 
 <div class="card">
 
-<h3>Enemy Pokémon</h3>
-
+<h3>Enemy Pokémons</h3>
 <div id="enemyInfo"></div>
-
     
 
 <br><br>
@@ -239,8 +237,8 @@ location.href='index.html';
 
 let allPokemon = [];
 let ownedPokemon = [];
-let selectedEnemy = null;
-
+// Multiple selected enemies
+let selectedEnemies = [];
   
 const weaknesses = {
 
@@ -400,10 +398,22 @@ ${p.tag_code
 }
 function selectPokemon(id){
 
-selectedEnemy =
-allPokemon.find(x => x.id == id);
+const enemy =
+allPokemon.find(x=>x.id==id);
 
-if(!selectedEnemy) return;
+if(!enemy) return;
+
+// Prevent duplicates
+if(selectedEnemies.some(e=>e.id==enemy.id)){
+
+document.getElementById("enemySearch").value="";
+document.getElementById("searchResults").innerHTML="";
+return;
+
+}
+
+// Add enemy
+selectedEnemies.push(enemy);
 
 document.getElementById("enemySearch").value="";
 document.getElementById("searchResults").innerHTML="";
@@ -412,19 +422,56 @@ renderEnemyInfo();
 renderOwnedPokemon();
 
 }
-  
+  function removeEnemy(id){
+
+selectedEnemies =
+selectedEnemies.filter(x=>x.id!==id);
+
+renderEnemyInfo();
+renderOwnedPokemon();
+
+}
 
 
 
 function renderEnemyInfo(){
 
+if(selectedEnemies.length===0){
+
 document.getElementById("enemyInfo").innerHTML=`
+<div class="none">
+No enemy selected.
+</div>
+`;
 
-<div class="pokemon-card">
+return;
 
-${selectedEnemy.image_url ? `
+}
+
+let html="";
+
+selectedEnemies.forEach(enemy=>{
+
+html+=`
+
+<div class="pokemon-card" style="margin-bottom:15px;position:relative;">
+
+<button
+onclick="removeEnemy(${enemy.id})"
+style="
+position:absolute;
+top:10px;
+right:10px;
+background:#dc2626;
+padding:5px 10px;
+">
+
+✕
+</button>
+
+${enemy.image_url ? `
 <img
-src="${selectedEnemy.image_url}"
+src="${enemy.image_url}"
 style="
 width:120px;
 height:120px;
@@ -433,24 +480,36 @@ object-fit:contain;
 ` : ""}
 
 <div class="tag">
-${selectedEnemy.tag_code}
+
+${enemy.tag_code}
+
 </div>
 
 <div class="name">
-${selectedEnemy.pokemon_name}
+
+${enemy.pokemon_name}
+
 </div>
 
 <div class="rarity">
-${"⭐".repeat(selectedEnemy.rarity)}
+
+${"⭐".repeat(enemy.rarity)}
+
 </div>
 
 <div class="version">
-Version ${selectedEnemy.version}
+
+Version ${enemy.version}
+
 </div>
 
 </div>
 
 `;
+
+});
+
+document.getElementById("enemyInfo").innerHTML=html;
 
 }
   
