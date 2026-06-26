@@ -287,8 +287,7 @@ allPokemon = data;
 }
 async function loadOwnedPokemon(){
 
-// Load owned Pokémon
-const {data:owned,error:ownedError}=await db
+const {data,error}=await db
 
 .from("user_collection")
 
@@ -302,66 +301,37 @@ version,
 rarity,
 pokemon_type_1,
 pokemon_type_2,
-image_url
+image_url,
+move_id,
+mezastar_moves(
+move_name,
+move_type
+)
 )
 `)
 
 .eq("user_id",Number(userId))
 .eq("owned",true);
 
-if(ownedError){
+if(error){
 
-console.log(ownedError);
-
-return;
-
-}
-
-// Load move configs
-const {data:configs,error:configError}=await db
-
-.from("user_tag_config")
-
-.select(`
-pokemon_id,
-notes,
-mezastar_moves(
-move_name,
-move_type
-)
-`)
-
-.eq("user_id",Number(userId));
-
-if(configError){
-
-console.log(configError);
+console.log(error);
 
 return;
 
 }
 
-ownedPokemon = owned.map(item=>{
+ownedPokemon=data.map(x=>({
 
-const config =
-configs.find(c=>c.pokemon_id===item.pokemon_id);
-
-return{
-
-...item.pokemon_master,
+...x.pokemon_master,
 
 move_name:
-config?.mezastar_moves?.move_name || null,
+x.pokemon_master.mezastar_moves?.move_name || null,
 
 move_type:
-config?.mezastar_moves?.move_type || null,
+x.pokemon_master.mezastar_moves?.move_type || null
 
-notes:
-config?.notes || ""
-
-};
-
-});
+}));
 
 }
 
@@ -507,27 +477,43 @@ weakTo.push(
 
 weakTo=[...new Set(weakTo)];
 
-const recommended=ownedPokemon.filter(p=>{
 
-const attackType=
-p.move_type || p.pokemon_type_1;
-
-return weakTo.includes(attackType);
-
-});
-
-if(recommended.length>0){
-
-displayPokemon=recommended;
-
-}
 
 }
 
 displayPokemon.sort((a,b)=>{
 
-if(b.rarity!==a.rarity)
+const aEffective =
+selectedEnemy &&
+(a.move_type || a.pokemon_type_1) &&
+(
+(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(a.move_type || a.pokemon_type_1)
+||
+(selectedEnemy.pokemon_type_2 &&
+(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(a.move_type || a.pokemon_type_1))
+);
+
+const bEffective =
+selectedEnemy &&
+(b.move_type || b.pokemon_type_1) &&
+(
+(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(b.move_type || b.pokemon_type_1)
+||
+(selectedEnemy.pokemon_type_2 &&
+(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(b.move_type || b.pokemon_type_1))
+);
+
+if(aEffective!==bEffective){
+
+return bEffective-aEffective;
+
+}
+
+if(b.rarity!==a.rarity){
+
 return b.rarity-a.rarity;
+
+}
 
 return a.pokemon_name.localeCompare(b.pokemon_name);
 
@@ -576,19 +562,37 @@ p.move_name
 
 </div>
 
-<div class="version">
-Version ${p.version}
-</div>
-
 ${
-p.notes
+selectedEnemy &&
+(
+(weaknesses[selectedEnemy.pokemon_type_1] || []).includes(p.move_type || p.pokemon_type_1)
+||
+(selectedEnemy.pokemon_type_2 &&
+(weaknesses[selectedEnemy.pokemon_type_2] || []).includes(p.move_type || p.pokemon_type_1))
+)
+
 ?
-`<div style="margin-top:8px;color:#cbd5e1;font-size:13px;">
-📝 ${p.notes}
+
+`<div style="
+margin-top:10px;
+background:#16a34a;
+padding:6px;
+border-radius:6px;
+text-align:center;
+font-weight:bold;
+">
+
+✅ Super Effective
+
 </div>`
+
 :
+
 ""
+
 }
+
+
 
 </div>
 
