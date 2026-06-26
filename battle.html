@@ -329,7 +329,7 @@ return;
 
 ownedPokemon=data.map(x=>{
     
-console.log(ownedPokemon);
+
 const config=x.user_tag_config?.[0];
 
 return{
@@ -467,11 +467,50 @@ Version ${selectedEnemy.version}
 }
   
   
-  function renderOwnedPokemon(){
+function renderOwnedPokemon(){
 
-const sorted=[...ownedPokemon]
+let displayPokemon=[...ownedPokemon];
 
-.sort((a,b)=>{
+if(selectedEnemy){
+
+let weakTo=[];
+
+if(selectedEnemy.pokemon_type_1){
+
+weakTo.push(
+...(weaknesses[selectedEnemy.pokemon_type_1]||[])
+);
+
+}
+
+if(selectedEnemy.pokemon_type_2){
+
+weakTo.push(
+...(weaknesses[selectedEnemy.pokemon_type_2]||[])
+);
+
+}
+
+weakTo=[...new Set(weakTo)];
+
+const recommended=ownedPokemon.filter(p=>{
+
+const attackType=
+p.move_type || p.pokemon_type_1;
+
+return weakTo.includes(attackType);
+
+});
+
+if(recommended.length>0){
+
+displayPokemon=recommended;
+
+}
+
+}
+
+displayPokemon.sort((a,b)=>{
 
 if(b.rarity!==a.rarity)
 return b.rarity-a.rarity;
@@ -482,7 +521,7 @@ return a.pokemon_name.localeCompare(b.pokemon_name);
 
 let html='<div class="results">';
 
-sorted.forEach(p=>{
+displayPokemon.forEach(p=>{
 
 html+=`
 
@@ -499,17 +538,43 @@ margin-bottom:10px;
 ">
 ` : ""}
 
-<div class="tag">${p.tag_code}</div>
+<div class="tag">
+${p.tag_code}
+</div>
 
-<div class="name">${p.pokemon_name}</div>
+<div class="name">
+${p.pokemon_name}
+</div>
 
 <div class="rarity">
 ${"⭐".repeat(p.rarity)}
 </div>
 
+<div class="type">
+
+${
+p.move_name
+?
+`⚔️ ${p.move_name}<br>(${p.move_type})`
+:
+`Using Pokémon Type<br>${p.pokemon_type_1}`
+}
+
+</div>
+
 <div class="version">
 Version ${p.version}
 </div>
+
+${
+p.notes
+?
+`<div style="margin-top:8px;color:#cbd5e1;font-size:13px;">
+📝 ${p.notes}
+</div>`
+:
+""
+}
 
 </div>
 
