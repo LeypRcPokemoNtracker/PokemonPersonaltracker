@@ -367,6 +367,34 @@ let currentPokemonId = null;
   // --------------------
 // INITIALIZE
 // --------------------
+  function getTypeEmoji(type){
+
+switch(type){
+
+case "Fire": return "🔥";
+case "Water": return "💧";
+case "Grass": return "🌿";
+case "Electric": return "⚡";
+case "Ice": return "❄️";
+case "Fighting": return "🥊";
+case "Poison": return "☠️";
+case "Ground": return "🌎";
+case "Flying": return "🪽";
+case "Psychic": return "🔮";
+case "Bug": return "🐛";
+case "Rock": return "🪨";
+case "Ghost": return "👻";
+case "Dragon": return "🐉";
+case "Dark": return "🌑";
+case "Steel": return "⚙️";
+case "Fairy": return "🧚";
+case "Normal": return "⭐";
+
+default: return "";
+
+}
+
+}
 function typeEmoji(type){
 
 const map = {
