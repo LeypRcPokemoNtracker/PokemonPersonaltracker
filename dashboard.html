@@ -248,12 +248,27 @@ accept="image/*">
 </div>
 
 </div>
-
 <div class="card">
 
-<h2>🃏 Support Cards</h2>
+<h2
+onclick="toggleSupportCards()"
+style="
+cursor:pointer;
+display:flex;
+justify-content:space-between;
+align-items:center;
+user-select:none;
+">
 
-<br>
+<span>🃏 Support Cards</span>
+
+<span id="supportArrow">▼</span>
+
+</h2>
+
+<div
+id="supportContainer"
+style="margin-top:20px;">
 
 <div
 id="supportCards"
@@ -261,6 +276,7 @@ class="stats">
 </div>
 
 </div>
+
 </div>
 
 <script>
@@ -656,6 +672,30 @@ modal.style.display = "flex";
 function closeImage(){
 
 document.getElementById("imageModal").style.display = "none";
+
+}
+
+    function toggleSupportCards(){
+
+const container =
+document.getElementById("supportContainer");
+
+const arrow =
+document.getElementById("supportArrow");
+
+if(container.style.display==="none"){
+
+container.style.display="block";
+
+arrow.innerHTML="▼";
+
+}else{
+
+container.style.display="none";
+
+arrow.innerHTML="►";
+
+}
 
 }
 function logout(){
