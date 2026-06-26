@@ -287,13 +287,13 @@ allPokemon = data;
 }
 async function loadOwnedPokemon(){
 
-const {data,error} = await db
+// Load owned Pokémon
+const {data:owned,error:ownedError}=await db
 
 .from("user_collection")
 
 .select(`
 pokemon_id,
-
 pokemon_master(
 id,
 tag_code,
@@ -303,38 +303,52 @@ rarity,
 pokemon_type_1,
 pokemon_type_2,
 image_url
-),
-
-user_tag_config(
-move_id,
-notes,
-mezastar_moves(
-move_name,
-move_type
 )
-)
-
 `)
 
 .eq("user_id",Number(userId))
 .eq("owned",true);
 
-if(error){
+if(ownedError){
 
-console.log(error);
+console.log(ownedError);
 
 return;
 
 }
 
-ownedPokemon=data.map(x=>{
-    console.log(x);
+// Load move configs
+const {data:configs,error:configError}=await db
 
-const config=x.user_tag_config?.[0];
+.from("user_tag_config")
+
+.select(`
+pokemon_id,
+notes,
+mezastar_moves(
+move_name,
+move_type
+)
+`)
+
+.eq("user_id",Number(userId));
+
+if(configError){
+
+console.log(configError);
+
+return;
+
+}
+
+ownedPokemon = owned.map(item=>{
+
+const config =
+configs.find(c=>c.pokemon_id===item.pokemon_id);
 
 return{
 
-...x.pokemon_master,
+...item.pokemon_master,
 
 move_name:
 config?.mezastar_moves?.move_name || null,
