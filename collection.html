@@ -91,8 +91,41 @@ gap:15px;
 background:#1e293b;
 padding:15px;
 border-radius:12px;
+transition:.3s;
 }
-  .poke-img{
+
+/* Owned Pokemon */
+.card.owned{
+
+border:1px solid #22c55e;
+
+box-shadow:
+0 0 15px rgba(34,197,94,.35);
+
+}
+  .card{
+
+transition:
+transform .25s,
+box-shadow .25s;
+
+}
+
+.card:hover{
+
+transform:
+translateY(-4px);
+
+}
+  .card.owned:hover{
+
+box-shadow:
+
+0 0 28px rgba(34,197,94,.6);
+
+}
+ .poke-img{
+
 width:100%;
 height:180px;
 object-fit:contain;
@@ -100,6 +133,30 @@ background:#0f172a;
 border-radius:8px;
 margin-bottom:10px;
 padding:5px;
+
+transition:.35s;
+
+}
+
+.poke-img.locked{
+
+filter:
+brightness(0)
+contrast(1.5);
+
+opacity:.85;
+
+transform:scale(.98);
+
+}
+  .poke-img.locked:hover{
+
+filter:
+brightness(.18)
+contrast(1.3);
+
+transition:.3s;
+
 }
 
 .tag{
@@ -447,12 +504,12 @@ ownedMap[p.id]?.quantity || 1;
 
 html+=`
 
-<div class="card">
+<div class="card ${owned ? 'owned' : ''}">
 
 ${p.image_url ? `
 <img
 src="${p.image_url}"
-class="poke-img"
+class="poke-img ${owned ? '' : 'locked'}"
 loading="lazy"
 alt="${p.pokemon_name}">
 ` : ''}
@@ -462,7 +519,7 @@ ${p.tag_code || ''}
 </div>
 
 <div class="name">
-${p.pokemon_name}
+${owned ? p.pokemon_name : "Unknown Pokémon"}
 </div>
 
 <div class="rarity">
@@ -482,12 +539,16 @@ Owned
 
 </label>
 
+${owned ? `
+
 <input
 class="qty"
 type="number"
 min="1"
 value="${qty}"
 onchange="updateQty(${p.id},this.value)">
+
+` : ""}
 
 </div>
 
