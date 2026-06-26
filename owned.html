@@ -701,8 +701,7 @@ async function saveConfig(pokemonId){
 
         pokemon_id:pokemonId,
 
-        move_id:move||null,
-
+move_id: move ? Number(move) : null,
         notes:notes
 
     },{
