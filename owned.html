@@ -357,6 +357,8 @@ let moves=[];
 
 let tagConfigs=[];
 
+let currentPokemonId = null;
+
   // PASTE PART 1B HERE
   // --------------------
 // INITIALIZE
@@ -604,39 +606,32 @@ function renderCards(){
 
             </label>
 
-            <select
+           <select
+class="moveSelect"
+onchange="moveChanged(${p.id})"
+id="move-${p.id}">
 
-                class="moveSelect"
+              <option value="">
+Not Assigned
+</option>
 
-                onchange="saveConfig(${p.id})"
+${moves.map(m=>`
 
-                id="move-${p.id}"
+<option
+value="${m.id}"
+${config && config.move_id==m.id ? "selected" : ""}
+>
 
-            >
+${m.move_name}
+(${m.move_type})
 
-                <option value="">
+</option>
 
-                Not Assigned
+`).join("")}
 
-                </option>
-
-                ${moves.map(m=>`
-
-                <option
-
-                value="${m.id}"
-
-                ${config&&config.move_id==m.id?"selected":""}
-
-                >
-
-                ${m.move_name}
-
-                (${m.move_type})
-
-                </option>
-
-                `).join("")}
+<option value="new">
+➕ Add New Move
+</option>
 
             </select>
 
@@ -675,7 +670,38 @@ function renderCards(){
 // --------------------
 // AUTO SAVE
 // --------------------
+async function moveChanged(pokemonId){
 
+const value =
+document.getElementById(`move-${pokemonId}`).value;
+
+if(value==="new"){
+
+openMoveModal(pokemonId);
+
+return;
+
+}
+
+saveConfig(pokemonId);
+
+}
+  function openMoveModal(pokemonId){
+
+currentPokemonId = pokemonId;
+
+document.getElementById("moveModal").style.display="flex";
+
+document.getElementById("newMoveName").value="";
+
+}
+
+function closeMoveModal(){
+
+document.getElementById("moveModal").style.display="none";
+
+}
+  
 async function saveConfig(pokemonId){
 
     const move=document
@@ -731,7 +757,92 @@ move_id: move ? Number(move) : null,
 }
 
 </script>
+<div
+id="moveModal"
+style="
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.7);
+justify-content:center;
+align-items:center;
+z-index:999;
+">
 
+<div
+style="
+background:#1e293b;
+padding:25px;
+border-radius:12px;
+width:400px;
+">
+
+<h2>Add Mezastar Move</h2>
+
+<br>
+
+<input
+id="newMoveName"
+placeholder="Move Name"
+style="
+width:100%;
+padding:12px;
+margin-bottom:12px;
+">
+
+<select
+id="newMoveType"
+style="
+width:100%;
+padding:12px;
+margin-bottom:20px;
+">
+
+<option>Fire</option>
+<option>Water</option>
+<option>Grass</option>
+<option>Electric</option>
+<option>Dragon</option>
+<option>Steel</option>
+<option>Psychic</option>
+<option>Dark</option>
+<option>Fairy</option>
+<option>Rock</option>
+<option>Ground</option>
+<option>Ice</option>
+<option>Flying</option>
+<option>Ghost</option>
+<option>Bug</option>
+<option>Poison</option>
+<option>Normal</option>
+<option>Fighting</option>
+
+</select>
+
+<div
+style="
+display:flex;
+justify-content:flex-end;
+gap:10px;
+">
+
+<button onclick="closeMoveModal()">
+
+Cancel
+
+</button>
+
+<button onclick="saveNewMove()">
+
+Save
+
+</button>
+
+</div>
+
+</div>
+
+</div>
 </body>
 
 </html>
