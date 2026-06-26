@@ -262,13 +262,15 @@ user-select:none;
 
 <span>🃏 Support Cards</span>
 
-<span id="supportArrow">▼</span>
-
+<span id="supportArrow">►</span>
 </h2>
 
 <div
 id="supportContainer"
-style="margin-top:20px;">
+style="
+display:none;
+margin-top:20px;
+">
 
 <div
 id="supportCards"
@@ -683,17 +685,15 @@ document.getElementById("supportContainer");
 const arrow =
 document.getElementById("supportArrow");
 
-if(container.style.display==="none"){
+if(container.style.display === "none"){
 
-container.style.display="block";
-
-arrow.innerHTML="▼";
+container.style.display = "block";
+arrow.innerHTML = "▼";
 
 }else{
 
-container.style.display="none";
-
-arrow.innerHTML="►";
+container.style.display = "none";
+arrow.innerHTML = "►";
 
 }
 
