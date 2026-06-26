@@ -179,7 +179,17 @@ overflow-y:auto;
 <div class="card">
 
 <h3>Recommended Pokémon You Own</h3>
+<div style="display:flex;gap:10px;margin:15px 0;">
 
+<select id="rarityFilter" onchange="renderOwnedPokemon()">
+
+<option value="All">All Rarities</option>
+<option value="6">⭐⭐⭐⭐⭐⭐</option>
+<option value="5">⭐⭐⭐⭐⭐</option>
+<option value="4">⭐⭐⭐⭐</option>
+<option value="1">⭐ Special</option>
+
+</select></div>
 <div id="results"></div>
 
 <hr style="margin:25px 0;border-color:#334155;">
@@ -517,7 +527,19 @@ document.getElementById("enemyInfo").innerHTML=html;
 function renderOwnedPokemon(){
 
 let displayPokemon=[...ownedPokemon];
+const rarity =
+document.getElementById("rarityFilter").value;
 
+if(rarity !== "All"){
+
+displayPokemon =
+displayPokemon.filter(p=>
+
+String(p.rarity)===rarity
+
+);
+
+}
 
 
 displayPokemon.sort((a,b)=>{
