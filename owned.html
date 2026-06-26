@@ -650,16 +650,13 @@ id="move-${p.id}">
               <option value="">
 Not Assigned
 </option>
-
 ${moves.map(m=>`
 
 <option
 value="${m.id}"
 ${moveId == m.id ? "selected" : ""}>
 
-${typeEmoji(m.move_type)}
-${m.move_name}
-(${m.move_type})
+${m.move_name} ${getTypeEmoji(m.move_type)}
 
 </option>
 
