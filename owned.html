@@ -711,13 +711,15 @@ async function saveConfig(pokemonId){
 
     if(error){
 
-        console.log(error);
+    console.error(error);
 
-        status.innerHTML="❌ Failed";
+    alert(error.message);
 
-        return;
+    status.innerHTML="❌ Failed";
 
-    }
+    return;
+
+}
 
     status.innerHTML="✅ Saved";
 
