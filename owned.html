@@ -701,7 +701,87 @@ function closeMoveModal(){
 document.getElementById("moveModal").style.display="none";
 
 }
-  
+  async function saveNewMove(){
+
+const name =
+document.getElementById("newMoveName").value.trim();
+
+const type =
+document.getElementById("newMoveType").value;
+
+if(name===""){
+
+alert("Enter a move name.");
+
+return;
+
+}
+
+// Check if move already exists
+const existing =
+moves.find(m=>
+
+m.move_name.toLowerCase()===name.toLowerCase()
+
+);
+
+let moveId;
+
+if(existing){
+
+moveId = existing.id;
+
+}else{
+
+const {data,error}=await db
+
+.from("mezastar_moves")
+
+.insert({
+
+move_name:name,
+
+move_type:type
+
+})
+
+.select()
+
+.single();
+
+if(error){
+
+console.error(error);
+
+alert(error.message);
+
+return;
+
+}
+
+moveId=data.id;
+
+// Reload moves
+await loadMoves();
+
+}
+
+// Close modal
+closeMoveModal();
+
+// Re-render cards
+renderCards();
+
+// Select the move automatically
+const select =
+document.getElementById(`move-${currentPokemonId}`);
+
+select.value = moveId;
+
+// Save immediately
+saveConfig(currentPokemonId);
+
+}
 async function saveConfig(pokemonId){
 
     const move=document
