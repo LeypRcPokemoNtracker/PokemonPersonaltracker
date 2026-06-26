@@ -394,7 +394,22 @@ document.getElementById(imgId);
 
 img.src=data.image_url+"?"+Date.now();
 img.style.display="block";
+if(type.startsWith("support_")){
 
+const slot =
+type.split("_")[1];
+
+document.getElementById(
+`supportName${slot}`
+).value =
+data.asset_name || "";
+
+document.getElementById(
+`supportType${slot}`
+).value =
+data.asset_subtype || "Support";
+
+}
 }
 
 async function loadSupportCards(){
@@ -406,13 +421,8 @@ holder.innerHTML="";
 
 for(let i=1;i<=15;i++){
 
-holder.innerHTML+=`
-
+holder.innerHTML += `
 <div class="stat">
-
-<h3>Support Card ${i}</h3>
-
-<br>
 
 <img
 id="supportImg${i}"
@@ -423,7 +433,38 @@ object-fit:contain;
 background:#0f172a;
 border-radius:10px;
 display:none;
+margin-bottom:10px;
 ">
+
+<input
+type="text"
+id="supportName${i}"
+placeholder="Card Name"
+onblur="saveSupportInfo(${i})"
+style="
+width:100%;
+padding:10px;
+margin-bottom:10px;
+">
+
+<select
+id="supportType${i}"
+onchange="saveSupportInfo(${i})"
+style="
+width:100%;
+padding:10px;
+margin-bottom:10px;
+">
+
+<option value="Support">Support</option>
+<option value="Item">Item</option>
+<option value="Pokémon Tool">Pokémon Tool</option>
+<option value="Stadium">Stadium</option>
+<option value="ACE SPEC">ACE SPEC</option>
+<option value="Trainer">Trainer</option>
+<option value="Other">Other</option>
+
+</select>
 
 <input
 type="file"
@@ -431,7 +472,6 @@ id="supportFile${i}"
 accept="image/*">
 
 </div>
-
 `;
 
 }
@@ -527,10 +567,26 @@ await db
 .upsert({
 
 user_id:Number(userId),
-
 asset_type:assetType,
+image_url:imageUrl,
 
-image_url:imageUrl
+asset_name:
+assetType.startsWith("support_")
+?
+document.getElementById(
+`supportName${assetType.split("_")[1]}`
+).value
+:
+null,
+
+asset_subtype:
+assetType.startsWith("support_")
+?
+document.getElementById(
+`supportType${assetType.split("_")[1]}`
+).value
+:
+null
 
 },
 
@@ -556,6 +612,32 @@ document.getElementById(imgId);
 img.src=imageUrl+"?"+Date.now();
 
 img.style.display="block";
+
+}
+    async function saveSupportInfo(slot){
+
+const {error}=await db
+
+.from("trainer_assets")
+
+.update({
+
+asset_name:
+document.getElementById(`supportName${slot}`).value,
+
+asset_subtype:
+document.getElementById(`supportType${slot}`).value
+
+})
+
+.eq("user_id",Number(userId))
+.eq("asset_type",`support_${slot}`);
+
+if(error){
+
+console.error(error);
+
+}
 
 }
 function logout(){
