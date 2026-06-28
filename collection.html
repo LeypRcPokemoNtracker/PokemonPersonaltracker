@@ -761,7 +761,9 @@ ownedMap[p.id]?.owned || false;
 const qty=
 ownedMap[p.id]?.quantity || 1;
 
-html+=`
+html += `
+
+<div class="card ${owned ? 'owned' : ''}">
 
 <div
 style="
@@ -772,19 +774,20 @@ margin-bottom:8px;
 
 <button
 style="
-padding:5px 8px;
-font-size:13px;
-background:#334155;
-color:#cbd5e1;
-border-radius:6px;
+padding:3px 6px;
+font-size:12px;
+background:transparent;
+color:#94a3b8;
+border:none;
 "
-title="Edit Pokémon"
+title="Edit"
 onclick="openEditPokemon(${p.id})">
 
 ✏️
 
 </button>
 
+</div>
 ${p.image_url ? `
 <img
 src="${p.image_url}"
@@ -872,11 +875,6 @@ onclick="changeQty(${p.id},1)">
 </div>
 
 
-
-</div>
-
-
-</div>
 
 `;
 
