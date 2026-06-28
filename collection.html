@@ -793,7 +793,9 @@ ${p.image_url ? `
 src="${p.image_url}"
 class="poke-img ${owned ? '' : 'locked'}"
 loading="lazy"
-alt="${p.pokemon_name}">
+alt="${p.pokemon_name}"
+onclick="openImageViewer('${p.image_url}','${p.pokemon_name}')"
+style="cursor:pointer;">
 ` : ''}
 
 <div
@@ -1062,7 +1064,20 @@ function closeAddPokemon(){
 document.getElementById("pokemonModal").style.display="none";
 
 }
+function openImageViewer(imageUrl, pokemonName){
 
+document.getElementById("viewerImage").src = imageUrl;
+document.getElementById("viewerImage").alt = pokemonName;
+
+document.getElementById("imageViewer").style.display = "flex";
+
+}
+
+function closeImageViewer(){
+
+document.getElementById("imageViewer").style.display = "none";
+
+}
   async function autoFillPokemon(e){
 
 const file=e.target.files[0];
@@ -1425,6 +1440,34 @@ Save Pokémon
 </div>
 
 </div>
+
+</div>
+  <div
+id="imageViewer"
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.85);
+justify-content:center;
+align-items:center;
+z-index:99999;
+"
+onclick="closeImageViewer()">
+
+<img
+id="viewerImage"
+style="
+max-width:90%;
+max-height:90%;
+object-fit:contain;
+border-radius:12px;
+box-shadow:0 0 25px rgba(0,0,0,.5);
+"
+onclick="event.stopPropagation()">
 
 </div>
 </body>
