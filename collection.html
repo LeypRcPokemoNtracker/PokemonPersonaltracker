@@ -572,6 +572,8 @@ let ownedMap={};
 let currentVersion="all";
 let currentView="all";
 
+let editPokemonId=null;
+
 window.addEventListener("load",()=>{
 
 document
@@ -850,6 +852,24 @@ onclick="changeQty(${p.id},1)">
 
 </div>
 
+<div style="margin-top:12px;">
+
+<button
+style="
+width:100%;
+background:#2563eb;
+color:white;
+"
+onclick="openEditPokemon(${p.id})">
+
+✏️ Edit Pokémon
+
+</button>
+
+</div>
+
+</div>
+
 `;
 
 });
@@ -974,8 +994,57 @@ renderPokemon();
 }
 }
 // ← updateQty ENDS HERE
+function openEditPokemon(id){
 
+editPokemonId=id;
+
+const p=
+allPokemon.find(x=>x.id==id);
+
+document.getElementById("pokemonModalTitle").innerHTML=
+"Edit Pokémon";
+
+document.getElementById("addCollection").value=
+p.version;
+
+document.getElementById("addTagCode").value=
+p.tag_code;
+
+document.getElementById("addPokemonName").value=
+p.pokemon_name;
+
+document.getElementById("addRarity").value=
+p.rarity;
+
+document.getElementById("addImage").value=
+p.image_url||"";
+
+document.getElementById("markOwned").checked=
+ownedMap[id]?.owned||false;
+
+document.getElementById("pokemonModal").style.display="flex";
+
+}
 function openAddPokemon(){
+
+editPokemonId=null;
+
+document.getElementById("pokemonModalTitle").innerHTML=
+"Add Pokémon";
+
+document.getElementById("addCollection").value=1;
+
+document.getElementById("addTagCode").value="";
+
+document.getElementById("addPokemonName").value="";
+
+document.getElementById("addImage").value="";
+
+document.getElementById("addImageFile").value="";
+
+document.getElementById("addRarity").value=6;
+
+document.getElementById("markOwned").checked=false;
 
 document.getElementById("pokemonModal").style.display="flex";
 
@@ -1052,7 +1121,7 @@ return;
 
 }
 
-if(existing){
+if(existing && existing.id!=editPokemonId){
 
 alert("This Tag Code already exists.");
 
@@ -1085,8 +1154,40 @@ image=db.storage
 .data.publicUrl;
 
 }
-const {data,error}=await db
+let data,error;
+
+if(editPokemonId){
+
+({data,error}=await db
+
 .from("pokemon_master")
+
+.update({
+
+tag_code:tag,
+
+pokemon_name:name,
+
+version:version,
+
+rarity:rarity,
+
+image_url:image || null
+
+})
+
+.eq("id",editPokemonId)
+
+.select()
+
+.single());
+
+}else{
+
+({data,error}=await db
+
+.from("pokemon_master")
+
 .insert({
 
 tag_code:tag,
@@ -1100,8 +1201,12 @@ rarity:rarity,
 image_url:image || null
 
 })
+
 .select()
-.single();
+
+.single());
+
+}
 
 if(error){
 
@@ -1129,7 +1234,19 @@ quantity:1
 });
 await loadCollection();
 }
-alert("Pokémon added successfully!");
+alert(
+
+editPokemonId
+
+?
+
+"Pokémon updated successfully!"
+
+:
+
+"Pokémon added successfully!"
+
+);
 
 closeAddPokemon();
 
@@ -1141,7 +1258,10 @@ document.getElementById("markOwned").checked=false;
 
 document.getElementById("addRarity").value=6;
 document.getElementById("addCollection").value=1;
+editPokemonId=null;
 
+document.getElementById("pokemonModalTitle").innerHTML=
+"Add Pokémon";
 // Refresh current view
 
 if(currentView==="owned"){
@@ -1196,8 +1316,11 @@ max-height:90%;
 overflow:auto;
 ">
 
-<h2>Add Pokémon</h2>
+<h2 id="pokemonModalTitle">
 
+Add Pokémon
+
+</h2>
 <br>
 
 <label>Collection *</label>
