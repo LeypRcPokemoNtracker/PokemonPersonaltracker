@@ -54,41 +54,7 @@ cursor:pointer;
 background:#334155;
 color:white;
 }
-.count-badge{
 
-margin-left:8px;
-
-padding:2px 8px;
-
-border-radius:999px;
-
-background:#475569;
-
-font-size:12px;
-
-font-weight:bold;
-
-color:white;
-
-display:inline-flex;
-
-align-items:center;
-
-justify-content:center;
-
-min-width:26px;
-
-transition:.25s;
-
-}
-
-.version-btn.active .count-badge{
-
-background:#ffffff;
-
-color:#2563eb;
-
-}
 .active{
 background:#3b82f6;
 }
@@ -226,7 +192,105 @@ padding:6px;
 border:none;
 border-radius:6px;
 }
+.summary-card{
 
+background:#1e293b;
+
+border-radius:16px;
+
+padding:22px;
+
+margin-bottom:25px;
+
+border:1px solid #334155;
+
+}
+
+.summary-title{
+
+font-size:14px;
+
+color:#94a3b8;
+
+text-transform:uppercase;
+
+letter-spacing:2px;
+
+margin-bottom:6px;
+
+}
+
+.summary-total{
+
+font-size:30px;
+
+font-weight:bold;
+
+margin-bottom:18px;
+
+}
+
+.summary-boxes{
+
+display:flex;
+
+gap:18px;
+
+flex-wrap:wrap;
+
+}
+
+.summary-box{
+
+flex:1;
+
+min-width:170px;
+
+background:#0f172a;
+
+border:1px solid #334155;
+
+border-radius:14px;
+
+padding:18px;
+
+cursor:pointer;
+
+transition:.25s;
+
+}
+
+.summary-box:hover{
+
+transform:translateY(-3px);
+
+border-color:#a855f7;
+
+box-shadow:0 0 18px rgba(168,85,247,.35);
+
+}
+
+.summary-label{
+
+font-size:13px;
+
+color:#94a3b8;
+
+text-transform:uppercase;
+
+letter-spacing:1px;
+
+margin-bottom:8px;
+
+}
+
+.summary-number{
+
+font-size:34px;
+
+font-weight:bold;
+
+}
 </style>
 </head>
 
@@ -259,21 +323,7 @@ Battle
 </button>
 
   
-<button
-id="ownedBtn"
-class="version-btn"
-onclick="loadOwned(this)">
-OWNED
-<span class="count-badge">0</span>
-</button>
 
-<button
-id="missingBtn"
-class="version-btn"
-onclick="loadMissing(this)">
-MISSING
-<span class="count-badge">0</span>
-</button>
 
   
 <button class="version-btn active" onclick="loadVersion(1,this)">
@@ -328,8 +378,50 @@ onkeyup="renderPokemon()">
 </select>
 </div>
 
-<div class="progress" id="progress">
-Loading...
+<div id="collectionSummary" class="summary-card">
+
+<div class="summary-title">
+Collection
+</div>
+
+<div class="summary-total" id="summaryTotal">
+0 / 0
+</div>
+
+<div class="summary-boxes">
+
+<div
+id="ownedBtn"
+class="summary-box"
+onclick="loadOwned(this)">
+
+<div class="summary-label">
+Owned
+</div>
+
+<div class="summary-number" id="ownedCount">
+0
+</div>
+
+</div>
+
+<div
+id="missingBtn"
+class="summary-box"
+onclick="loadMissing(this)">
+
+<div class="summary-label">
+Missing
+</div>
+
+<div class="summary-number" id="missingCount">
+0
+</div>
+
+</div>
+
+</div>
+
 </div>
 
 <div class="grid" id="grid"></div>
@@ -561,26 +653,22 @@ updateCollectionCounters();
 }
 function updateCollectionCounters(){
 
-db
-.from("pokemon_master")
-.select("id",{count:"exact",head:true})
-.then(({count:total})=>{
-
 const owned =
 Object.values(ownedMap)
 .filter(x=>x.owned)
 .length;
 
-const missing =
-Math.max(0,total-owned);
+const total =
+pokemonList.length;
 
-document.querySelector("#ownedBtn .count-badge").textContent =
+document.getElementById("ownedCount").textContent =
 owned;
 
-document.querySelector("#missingBtn .count-badge").textContent =
-missing;
+document.getElementById("missingCount").textContent =
+Math.max(total-owned,0);
 
-});
+document.getElementById("summaryTotal").textContent =
+`${owned} / ${total}`;
 
 }
 function renderPokemon(){
@@ -615,14 +703,7 @@ matchesRarity;
 
 });
 
-const ownedCount=
-filtered.filter(x=>
-ownedMap[x.id]?.owned
-).length;
-
-document.getElementById('progress')
-.innerHTML=
-`Owned ${ownedCount} / ${filtered.length}`;
+updateCollectionCounters();
 
 let html='';
 
