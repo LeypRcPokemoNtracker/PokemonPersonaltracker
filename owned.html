@@ -248,6 +248,76 @@ font-size:22px;
 color:#94a3b8;
 
 }
+  .summary{
+
+display:flex;
+
+gap:20px;
+
+margin-bottom:25px;
+
+flex-wrap:wrap;
+
+}
+
+.summaryCard{
+
+flex:1;
+
+min-width:220px;
+
+background:#1e293b;
+
+border-radius:14px;
+
+padding:20px;
+
+text-align:center;
+
+box-shadow:0 3px 10px rgba(0,0,0,.35);
+
+}
+
+.summaryTitle{
+
+color:#94a3b8;
+
+font-size:14px;
+
+margin-bottom:10px;
+
+text-transform:uppercase;
+
+letter-spacing:1px;
+
+}
+
+.summaryValue{
+
+font-size:34px;
+
+font-weight:bold;
+
+}
+
+.summaryAssigned{
+
+color:#22c55e;
+
+}
+
+.summaryMissing{
+
+color:#ef4444;
+
+}
+
+.summaryPercent{
+
+color:#38bdf8;
+
+}
+  
 
 </style>
 
@@ -331,7 +401,63 @@ placeholder="Search Pokémon or Tag Code..."
 </select>
 
 </div>
+<div class="summary">
 
+<div class="summaryCard">
+
+<div class="summaryTitle">
+
+Assigned Moves
+
+</div>
+
+<div
+id="assignedCount"
+class="summaryValue summaryAssigned">
+
+0
+
+</div>
+
+</div>
+
+<div class="summaryCard">
+
+<div class="summaryTitle">
+
+Missing Moves
+
+</div>
+
+<div
+id="missingCount"
+class="summaryValue summaryMissing">
+
+0
+
+</div>
+
+</div>
+
+<div class="summaryCard">
+
+<div class="summaryTitle">
+
+Completion
+
+</div>
+
+<div
+id="completionPercent"
+class="summaryValue summaryPercent">
+
+0%
+
+</div>
+
+</div>
+
+</div>
 <div id="cards" class="grid">
 
 <div class="empty">
@@ -551,7 +677,33 @@ async function loadTagConfigs(){
     tagConfigs=data;
 
 }
+function updateSummary(){
 
+const total = ownedPokemon.length;
+
+const assigned =
+ownedPokemon.filter(p=>p.move_id).length;
+
+const missing =
+total-assigned;
+
+const percent =
+total
+?
+Math.round((assigned/total)*100)
+:
+0;
+
+document.getElementById("assignedCount").innerHTML =
+assigned;
+
+document.getElementById("missingCount").innerHTML =
+missing;
+
+document.getElementById("completionPercent").innerHTML =
+percent+"%";
+
+}
 // --------------------
 // RENDER CARDS
 // --------------------
@@ -573,6 +725,7 @@ function renderCards(){
 const moveFilter=document
 .getElementById("moveFilter")
 .value;
+  updateSummary();
     let list=[...ownedPokemon];
 
     if(search){
