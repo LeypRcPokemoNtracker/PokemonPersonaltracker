@@ -226,6 +226,11 @@ Battle
 <button class="version-btn" onclick="loadOwned(this)">
 OWNED
 </button>
+  <button
+class="version-btn"
+onclick="loadMissing(this)">
+MISSING
+</button>
 <button class="version-btn active" onclick="loadVersion(1,this)">
 V1
 </button>
@@ -453,7 +458,46 @@ renderPokemon();
 
 }
 
+async function loadMissing(btn=null){
 
+document
+.querySelectorAll(".version-btn")
+.forEach(x=>x.classList.remove("active"));
+
+if(btn){
+btn.classList.add("active");
+}
+
+await loadCollection();
+
+const missingIds =
+pokemonList
+.filter(p=>!ownedMap[p.id]?.owned)
+.map(p=>p.id);
+
+const {data,error}=await db
+.from("pokemon_master")
+.select("*")
+.not(
+"id",
+"in",
+`(${Object.keys(ownedMap).join(",") || 0})`
+)
+  
+.order("rarity",{ascending:false})
+.order("version")
+.order("tag_code");
+
+if(error){
+console.error(error);
+return;
+}
+
+pokemonList=data;
+
+renderPokemon();
+
+}
 
 
 async function loadCollection(){
