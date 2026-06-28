@@ -318,8 +318,15 @@ placeholder="Search Pokémon or Tag Code..."
   <option value="1">✨  Special</option>
 
 <option value="4">⭐⭐⭐⭐</option>
+</select>
 
+  <select id="moveFilter">
 
+<option value="All">All Moves</option>
+
+<option value="missing">❌ No Move Assigned</option>
+
+<option value="assigned">✅ Has Move</option>
 
 </select>
 
@@ -445,7 +452,9 @@ async function init(){
     document
     .getElementById("rarityFilter")
     .addEventListener("change",renderCards);
-
+document
+.getElementById("moveFilter")
+.addEventListener("change",renderCards);
 }
 
 // --------------------
@@ -561,7 +570,9 @@ function renderCards(){
     const rarity=document
     .getElementById("rarityFilter")
     .value;
-
+const moveFilter=document
+.getElementById("moveFilter")
+.value;
     let list=[...ownedPokemon];
 
     if(search){
@@ -593,7 +604,17 @@ function renderCards(){
         list=list.filter(p=>String(p.rarity)==rarity);
 
     }
+if(moveFilter=="missing"){
 
+list=list.filter(p=>!p.move_id);
+
+}
+
+if(moveFilter=="assigned"){
+
+list=list.filter(p=>p.move_id);
+
+}
     list.sort((a,b)=>{
 
         if(b.rarity!==a.rarity)
@@ -653,17 +674,21 @@ const moveId = Number(p.move_id);
 
             </div>
 
-            <div class="version">
+           <div class="version">
 
-                Version ${p.version}
+${{
+1:"V1",
+2:"V2",
+3:"V3",
+4:"🌌 Galaxy",
+5:"🎁 Promo"
+}[p.version]}
 
-            </div>
+•
 
-            <div class="rarity">
+${"⭐".repeat(p.rarity)}
 
-                ${"⭐".repeat(p.rarity)}
-
-            </div>
+</div>
 
             <label>
 
