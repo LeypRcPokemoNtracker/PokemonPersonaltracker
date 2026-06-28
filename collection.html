@@ -54,7 +54,41 @@ cursor:pointer;
 background:#334155;
 color:white;
 }
+.count-badge{
 
+margin-left:8px;
+
+padding:2px 8px;
+
+border-radius:999px;
+
+background:#475569;
+
+font-size:12px;
+
+font-weight:bold;
+
+color:white;
+
+display:inline-flex;
+
+align-items:center;
+
+justify-content:center;
+
+min-width:26px;
+
+transition:.25s;
+
+}
+
+.version-btn.active .count-badge{
+
+background:#ffffff;
+
+color:#2563eb;
+
+}
 .active{
 background:#3b82f6;
 }
@@ -223,18 +257,29 @@ Battle
   <button onclick="exportCollection()">
  Export Collection
 </button>
-<button class="version-btn" onclick="loadOwned(this)">
+
+  
+<button
+id="ownedBtn"
+class="version-btn"
+onclick="loadOwned(this)">
 OWNED
+<span class="count-badge">0</span>
 </button>
-  <button
+
+<button
+id="missingBtn"
 class="version-btn"
 onclick="loadMissing(this)">
 MISSING
+<span class="count-badge">0</span>
 </button>
+
+  
 <button class="version-btn active" onclick="loadVersion(1,this)">
 V1
 </button>
-
+  
 <button class="version-btn" onclick="loadVersion(2,this)">
 V2
 </button>
@@ -512,9 +557,32 @@ ownedMap={};
 (data||[]).forEach(x=>{
 ownedMap[x.pokemon_id]=x;
 });
+updateCollectionCounters();
+}
+function updateCollectionCounters(){
+
+db
+.from("pokemon_master")
+.select("id",{count:"exact",head:true})
+.then(({count:total})=>{
+
+const owned =
+Object.values(ownedMap)
+.filter(x=>x.owned)
+.length;
+
+const missing =
+Math.max(0,total-owned);
+
+document.querySelector("#ownedBtn .count-badge").textContent =
+owned;
+
+document.querySelector("#missingBtn .count-badge").textContent =
+missing;
+
+});
 
 }
-
 function renderPokemon(){
 
 const search =
