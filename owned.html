@@ -623,8 +623,7 @@ function renderCards(){
         const config =
 tagConfigs.find(x=>x.pokemon_id===p.id);
 
-const moveId = p.move_id;
-
+const moveId = Number(p.move_id);
         html+=`
 
         <div class="card">
@@ -851,7 +850,10 @@ if(updateError){
 
 }
 // Reload owned Pokémon
-await loadOwnedPokemon();
+await loadOwnedPokemon();await Promise.all([
+    loadOwnedPokemon(),
+    loadTagConfigs()
+]);
 
 // Close modal
 closeMoveModal();
@@ -916,9 +918,12 @@ onConflict:"user_id,pokemon_id"
     }
 
     // Refresh data
-    await loadTagConfigs();
+  await Promise.all([
+    loadOwnedPokemon(),
+    loadTagConfigs()
+]);
 
-    renderCards();
+renderCards();
 
     status.innerHTML = "✅ Saved";
 
