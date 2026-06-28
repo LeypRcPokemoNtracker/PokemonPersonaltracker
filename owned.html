@@ -362,6 +362,7 @@ let moves=[];
 let tagConfigs=[];
 
 let currentPokemonId = null;
+  let editingMoveId = null;
 
   // PASTE PART 1B HERE
   // --------------------
@@ -693,7 +694,9 @@ ${m.move_name} ${getTypeEmoji(m.move_type)}
 <option value="new">
 ➕ Add New Move
 </option>
-
+<option value="manage">
+⚙️ Manage Moves
+</option>
             </select>
 
             <label>
@@ -744,22 +747,112 @@ return;
 
 }
 
+if(value==="manage"){
+
+openManageMoves();
+
+document.getElementById(`move-${pokemonId}`).value =
+ownedPokemon.find(x=>x.id===pokemonId)?.move_id || "";
+
+return;
+
+}
+
 saveConfig(pokemonId);
 
 }
-  function openMoveModal(pokemonId){
+ function openMoveModal(pokemonId){
 
-currentPokemonId = pokemonId;
+editingMoveId=null;
+
+currentPokemonId=pokemonId;
+
+document.getElementById("moveModalTitle").innerHTML =
+"Add Mezastar Move";
 
 document.getElementById("moveModal").style.display="flex";
 
 document.getElementById("newMoveName").value="";
+
+document.getElementById("newMoveType").selectedIndex=0;
 
 }
 
 function closeMoveModal(){
 
 document.getElementById("moveModal").style.display="none";
+
+}
+  function openManageMoves(){
+
+renderManageMoves();
+
+document.getElementById("manageMovesModal").style.display="flex";
+
+}
+
+function closeManageMoves(){
+
+document.getElementById("manageMovesModal").style.display="none";
+
+}
+
+function renderManageMoves(){
+
+const container =
+document.getElementById("manageMovesList");
+
+container.innerHTML =
+moves.map(m=>`
+
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:10px;
+border-bottom:1px solid #334155;
+">
+
+<div>
+
+<strong>${m.move_name}</strong>
+
+<br>
+
+<small>${getTypeEmoji(m.move_type)} ${m.move_type}</small>
+
+</div>
+
+<button onclick="editMove(${m.id})">
+
+✏️ Edit
+
+</button>
+
+</div>
+
+`).join("");
+
+}
+  function editMove(id){
+
+const move =
+moves.find(m=>m.id===id);
+
+editingMoveId=id;
+
+document.getElementById("moveModalTitle").innerHTML =
+"Edit Mezastar Move";
+
+document.getElementById("newMoveName").value =
+move.move_name;
+
+document.getElementById("newMoveType").value =
+move.move_type;
+
+closeManageMoves();
+
+document.getElementById("moveModal").style.display="flex";
 
 }
   async function saveNewMove(){
@@ -787,6 +880,44 @@ m.move_name.toLowerCase()===name.toLowerCase()
 );
 
 let moveId;
+
+if(editingMoveId){
+
+const {error}=await db
+
+.from("mezastar_moves")
+
+.update({
+
+move_name:name,
+
+move_type:type
+
+})
+
+.eq("id",editingMoveId);
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+editingMoveId=null;
+
+await loadMoves();
+
+await loadOwnedPokemon();
+
+renderCards();
+
+closeMoveModal();
+
+return;
+
+}
 
 if(existing){
 
@@ -936,6 +1067,49 @@ renderCards();
 }
 
 </script>
+  <div
+id="manageMovesModal"
+style="
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.7);
+justify-content:center;
+align-items:center;
+z-index:998;
+">
+
+<div
+style="
+background:#1e293b;
+width:600px;
+max-height:80vh;
+overflow:auto;
+padding:25px;
+border-radius:12px;
+">
+
+<h2>Manage Moves</h2>
+
+<br>
+
+<div id="manageMovesList"></div>
+
+<br>
+
+<div style="text-align:right;">
+
+<button onclick="closeManageMoves()">
+
+Close
+
+</button>
+
+</div>
+
+</div>
+
+</div>
 <div
 id="moveModal"
 style="
@@ -956,8 +1130,9 @@ border-radius:12px;
 width:400px;
 ">
 
-<h2>Add Mezastar Move</h2>
-
+<h2 id="moveModalTitle">
+Add Mezastar Move
+</h2>
 <br>
 
 <input
