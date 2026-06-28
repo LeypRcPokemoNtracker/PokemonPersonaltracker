@@ -192,6 +192,59 @@ padding:6px;
 border:none;
 border-radius:6px;
 }
+
+  .qty-control{
+
+display:flex;
+align-items:center;
+justify-content:center;
+gap:8px;
+
+background:#0f172a;
+border:1px solid #334155;
+border-radius:10px;
+
+padding:4px;
+
+}
+
+.qty-btn{
+
+width:30px;
+height:30px;
+
+border:none;
+border-radius:8px;
+
+background:#334155;
+color:white;
+
+font-size:18px;
+font-weight:bold;
+
+cursor:pointer;
+
+transition:.2s;
+
+}
+
+.qty-btn:hover{
+
+background:#3b82f6;
+
+}
+
+.qty-value{
+
+min-width:28px;
+
+text-align:center;
+
+font-size:16px;
+font-weight:bold;
+
+}
+  
 .summary-card{
 
 background:#1e293b;
@@ -772,15 +825,27 @@ Owned
 
 ${owned ? `
 
-<input
-class="qty"
-type="number"
-min="1"
-value="${qty}"
-onchange="updateQty(${p.id},this.value)">
+<div class="qty-control">
+
+<button
+class="qty-btn"
+onclick="changeQty(${p.id},-1)">
+−
+</button>
+
+<div class="qty-value">
+${qty}
+</div>
+
+<button
+class="qty-btn"
+onclick="changeQty(${p.id},1)">
++
+</button>
+
+</div>
 
 ` : ""}
-
 </div>
 
 </div>
@@ -853,7 +918,20 @@ renderPokemon();
 
 }
 }
+async function changeQty(pokemonId, amount){
 
+const current =
+ownedMap[pokemonId]?.quantity || 1;
+
+const newQty =
+Math.max(1,current+amount);
+
+await updateQty(
+pokemonId,
+newQty
+);
+
+}
 async function updateQty(pokemonId, qty){
 
 if(!ownedMap[pokemonId]?.owned){
