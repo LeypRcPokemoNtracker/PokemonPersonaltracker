@@ -748,6 +748,7 @@ const ext=file.name.split(".").pop().toLowerCase();
 
 const fileName=
 `${tag}_${name}.${ext}`;
+console.log(fileName);
 
 const upload=await db.storage
 .from("pokemon-images")
@@ -755,7 +756,7 @@ const upload=await db.storage
 
 if(upload.error){
 
-alert(upload.error.message);
+alert(JSON.stringify(upload.error, null, 2));
 
 return;
 
