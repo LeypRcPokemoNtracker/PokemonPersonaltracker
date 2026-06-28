@@ -97,11 +97,20 @@ transition:.3s;
 /* Owned Pokemon */
 .card.owned{
 
-border:1px solid #d946ef;
+border:1px solid #e879f9;
 
 box-shadow:
-0 0 12px rgba(217,70,239,.45),
-0 0 24px rgba(168,85,247,.25);
+0 0 10px #e879f955,
+0 0 22px #a855f744;
+
+}
+  .card.owned:hover{
+
+transform:translateY(-4px);
+
+box-shadow:
+0 0 16px #f472b6aa,
+0 0 34px #a855f788;
 
 }
   .card{
@@ -118,13 +127,7 @@ transform:
 translateY(-4px);
 
 }
-.card.owned:hover{
 
-box-shadow:
-0 0 18px rgba(236,72,153,.65),
-0 0 36px rgba(168,85,247,.45);
-
-}
  .poke-img{
 
 width:100%;
