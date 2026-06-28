@@ -530,19 +530,39 @@ loading="lazy"
 alt="${p.pokemon_name}">
 ` : ''}
 
-<div class="tag">
+<div
+class="tag"
+style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+">
+
+<span>
+${p.tag_code}
+</span>
+
+<span
+style="
+font-weight:bold;
+color:#cbd5e1;
+">
+
 ${{
-1:"🇵🇭 V1",
-2:"🇵🇭 V2",
-3:"🇵🇭 V3",
-4:"🌌 Galaxy",
-5:"🎁 Promo",
-6:"🌍 Others"
+1:"V1",
+2:"V2",
+3:"V3",
+4:"Galaxy 🌌",
+5:"Promo 🎁",
+6:"Others 🌍"
 }[p.version]}
+
+</span>
+
 </div>
 
 <div class="name">
-${owned ? p.pokemon_name : "Unknown Pokémon"}
+${p.pokemon_name}
 </div>
 
 <div class="rarity">
