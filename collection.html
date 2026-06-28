@@ -326,7 +326,7 @@ Battle
 
 
   
-<button class="version-btn active" onclick="loadVersion(1,this)">
+<button class="version-btn" onclick="loadVersion(1,this)">
 V1
 </button>
   
@@ -347,7 +347,7 @@ Promos
 🌍 Others
 </button>
   
-  <button class="version-btn" onclick="loadVersion('all',this)"> 
+  <button class="version-btn active" onclick="loadVersion('all',this)"> 
     ALL 
   </button>
 
@@ -503,22 +503,24 @@ if(!userId){
 location.href='index.html';
 }
 
+let allPokemon=[];
 let pokemonList=[];
 let ownedMap={};
-let currentVersion=1;
+let currentVersion="all";
 
-loadVersion(
-1,
-document.querySelector(".version-btn.active")
-);
-  
 window.addEventListener("load",()=>{
 
 document
 .getElementById("addImageFile")
 .addEventListener("change",autoFillPokemon);
 
+const allBtn =
+document.querySelector(".version-btn.active");
+
+loadVersion("all", allBtn);
 });
+  
+
 async function loadVersion(version,btn=null){
 
 currentVersion=version;
@@ -549,7 +551,13 @@ console.error(error);
 return;
 }
 
-pokemonList = data;
+allPokemon = data;
+pokemonList =
+version==="all"
+? [...allPokemon]
+: allPokemon.filter(
+p=>p.version==version
+);
 
 renderPokemon();
 }
@@ -575,21 +583,10 @@ renderPokemon();
         renderPokemon();
         return;
     }
-
-    const {data,error}=await db
-    .from('pokemon_master')
-    .select('*')
-    .in('id',ownedIds)
-    .order('rarity',{ascending:false})
-    .order('version')
-    .order('tag_code');
-
-    if(error){
-        console.error(error);
-        return;
-    }
-
-    pokemonList=data;
+pokemonList =
+allPokemon.filter(
+p=>ownedMap[p.id]?.owned
+);
 
     renderPokemon();
 
@@ -607,30 +604,10 @@ btn.classList.add("active");
 
 await loadCollection();
 
-const missingIds =
-pokemonList
-.filter(p=>!ownedMap[p.id]?.owned)
-.map(p=>p.id);
-
-const {data,error}=await db
-.from("pokemon_master")
-.select("*")
-.not(
-"id",
-"in",
-`(${Object.keys(ownedMap).join(",") || 0})`
-)
-  
-.order("rarity",{ascending:false})
-.order("version")
-.order("tag_code");
-
-if(error){
-console.error(error);
-return;
-}
-
-pokemonList=data;
+pokemonList =
+allPokemon.filter(
+p=>!ownedMap[p.id]?.owned
+);
 
 renderPokemon();
 
@@ -659,7 +636,7 @@ Object.values(ownedMap)
 .length;
 
 const total =
-pokemonList.length;
+allPokemon.length;
 
 document.getElementById("ownedCount").textContent =
 owned;
