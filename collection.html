@@ -269,7 +269,17 @@ border-color:#a855f7;
 box-shadow:0 0 18px rgba(168,85,247,.35);
 
 }
+.summary-box.active{
 
+border-color:#e879f9;
+
+box-shadow:
+0 0 18px rgba(236,72,153,.45),
+0 0 35px rgba(168,85,247,.35);
+
+transform:translateY(-3px);
+
+}
 .summary-label{
 
 font-size:13px;
@@ -507,6 +517,7 @@ let allPokemon=[];
 let pokemonList=[];
 let ownedMap={};
 let currentVersion="all";
+let currentView="all";
 
 window.addEventListener("load",()=>{
 
@@ -524,27 +535,25 @@ loadVersion("all", allBtn);
 async function loadVersion(version,btn=null){
 
 currentVersion=version;
+  currentView="version";
 
 document
 .querySelectorAll('.version-btn')
 .forEach(x=>x.classList.remove('active'));
+  document
+.querySelectorAll(".summary-box")
+.forEach(x=>x.classList.remove("active"));
 
 if(btn) btn.classList.add('active');
 
 await loadCollection();
 
-let query = db
-.from('pokemon_master')
-.select('*');
-
-if(version !== 'all'){
-query = query.eq('version',version);
-}
-
-const {data,error} = await query
-.order('version')
-.order('rarity',{ascending:false})
-  .order('tag_code');
+const {data,error}=await db
+.from("pokemon_master")
+.select("*")
+.order("version")
+.order("rarity",{ascending:false})
+.order("tag_code");
 
 if(error){
 console.error(error);
@@ -562,14 +571,17 @@ p=>p.version==version
 renderPokemon();
 }
   async function loadOwned(btn=null){
-
+currentView="owned";
     document
     .querySelectorAll('.version-btn')
     .forEach(x=>x.classList.remove('active'));
-
-    if(btn){
-        btn.classList.add('active');
-    }
+document
+.querySelectorAll(".summary-box")
+.forEach(x=>x.classList.remove("active"));
+   
+       if(btn){
+    btn.classList.add("active");
+}
 
     await loadCollection();
 
@@ -593,11 +605,13 @@ p=>ownedMap[p.id]?.owned
 }
 
 async function loadMissing(btn=null){
-
+currentView="missing";
 document
 .querySelectorAll(".version-btn")
 .forEach(x=>x.classList.remove("active"));
-
+document
+.querySelectorAll(".summary-box")
+.forEach(x=>x.classList.remove("active"));
 if(btn){
 btn.classList.add("active");
 }
@@ -819,12 +833,25 @@ return;
 await loadCollection();
 
 // If currently viewing OWNED, refresh the list
-if(document.querySelector(".version-btn.active")?.textContent.trim() === "OWNED"){
-await loadOwned(document.querySelector(".version-btn.active"));
-}else{
-renderPokemon();
-}
+if(currentView==="owned"){
 
+await loadOwned(
+document.getElementById("ownedBtn")
+);
+
+}
+else if(currentView==="missing"){
+
+await loadMissing(
+document.getElementById("missingBtn")
+);
+
+}
+else{
+
+renderPokemon();
+
+}
 }
 
 async function updateQty(pokemonId, qty){
@@ -848,8 +875,26 @@ return;
 
 await loadCollection();
 
-}
+if(currentView==="owned"){
 
+await loadOwned(
+document.getElementById("ownedBtn")
+);
+
+}
+else if(currentView==="missing"){
+
+await loadMissing(
+document.getElementById("missingBtn")
+);
+
+}
+else{
+
+renderPokemon();
+
+}
+}
 // ← updateQty ENDS HERE
 
 function openAddPokemon(){
@@ -1021,13 +1066,26 @@ document.getElementById("addCollection").value=1;
 
 // Refresh current view
 
-if(currentVersion==="all"){
+if(currentView==="owned"){
 
-loadVersion("all");
+loadOwned(
+document.getElementById("ownedBtn")
+);
 
-}else{
+}
+else if(currentView==="missing"){
 
-loadVersion(currentVersion);
+loadMissing(
+document.getElementById("missingBtn")
+);
+
+}
+else{
+
+loadVersion(
+currentVersion,
+document.querySelector(".version-btn.active")
+);
 
 }
 
