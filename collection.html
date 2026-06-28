@@ -765,6 +765,19 @@ html+=`
 
 <div class="card ${owned ? 'owned' : ''}">
 
+<button
+style="
+width:100%;
+background:#2563eb;
+color:white;
+margin-bottom:12px;
+"
+onclick="openEditPokemon(${p.id})">
+
+✏️ Edit Pokémon
+
+</button>
+
 ${p.image_url ? `
 <img
 src="${p.image_url}"
@@ -848,6 +861,23 @@ onclick="changeQty(${p.id},1)">
 </div>
 
 ` : ""}
+
+</div>
+
+<div style="margin-top:12px;">
+
+<button
+style="
+width:100%;
+background:#2563eb;
+color:white;
+"
+onclick="openEditPokemon(${p.id})">
+
+✏️ Edit Pokémon
+
+</button>
+
 </div>
 
 </div>
