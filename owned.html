@@ -840,6 +840,8 @@ const move =
 moves.find(m=>m.id===id);
 
 editingMoveId=id;
+    currentPokemonId=null;
+
 
 document.getElementById("moveModalTitle").innerHTML =
 "Edit Mezastar Move";
@@ -877,8 +879,11 @@ moves.find(m=>
 
 m.move_name.toLowerCase()===name.toLowerCase()
 
-);
+&&
 
+m.id!==editingMoveId
+
+);
 let moveId;
 
 if(editingMoveId){
@@ -981,9 +986,10 @@ if(updateError){
 
 }
 // Reload owned Pokémon
-await loadOwnedPokemon();await Promise.all([
+await Promise.all([
     loadOwnedPokemon(),
-    loadTagConfigs()
+    loadTagConfigs(),
+    loadMoves()
 ]);
 
 // Close modal
