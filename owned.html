@@ -977,33 +977,133 @@ document.getElementById("manageMovesModal").style.display="none";
 
 function renderManageMoves(){
 
+const search =
+(document.getElementById("manageMoveSearch")?.value || "")
+.toLowerCase();
+
 const container =
 document.getElementById("manageMovesList");
 
 container.innerHTML =
-moves.map(m=>`
+
+moves
+
+.filter(m=>
+
+m.move_name
+.toLowerCase()
+.includes(search)
+
+)
+
+.map(m=>{
+
+const users =
+
+ownedPokemon.filter(
+
+p=>p.move_id==m.id
+
+);
+
+const usage = users.length;
+
+return `
 
 <div style="
 display:flex;
 justify-content:space-between;
 align-items:center;
-padding:10px;
+padding:12px;
 border-bottom:1px solid #334155;
 ">
 
 <div>
 
-<strong>${m.move_name}</strong>
+<strong>
+
+${m.move_name}
+
+</strong>
 
 <br>
 
-<small>${getTypeEmoji(m.move_type)} ${m.move_type}</small>
+<small>
+
+${getTypeEmoji(m.move_type)}
+
+${m.move_type}
+
+</small>
+
+<br>
+
+<small style="
+color:${usage ? '#22c55e' : '#94a3b8'};
+display:block;
+margin-top:6px;
+">
+
+Used by
+
+<b>${usage}</b>
+
+Pokémon
+
+</small>
+
+${
+usage
+?
+
+`
+
+<div style="
+margin-top:8px;
+padding-left:10px;
+font-size:13px;
+color:#cbd5e1;
+max-height:110px;
+overflow-y:auto;
+">
+
+${users.map(p=>`
+
+<div>
+
+• ${p.pokemon_name}
 
 </div>
 
-<div style="display:flex;gap:8px;">
+`).join("")}
 
-<button onclick="editMove(${m.id})">
+</div>
+
+`
+
+:
+
+`<div style="
+margin-top:8px;
+font-size:13px;
+color:#64748b;
+">
+
+No Pokémon currently use this move.
+
+</div>`
+
+}
+
+</div>
+
+<div style="
+display:flex;
+gap:8px;
+">
+
+<button
+onclick="editMove(${m.id})">
 
 ✏️ Edit
 
@@ -1021,7 +1121,9 @@ onclick="deleteMove(${m.id})">
 
 </div>
 
-`).join("");
+`;
+
+}).join("");
 
 }
   function editMove(id){
@@ -1335,6 +1437,20 @@ border-radius:12px;
 <h2>Manage Moves</h2>
 
 <br>
+
+<input
+id="manageMoveSearch"
+placeholder="Search moves..."
+oninput="renderManageMoves()"
+style="
+width:100%;
+padding:12px;
+margin-bottom:20px;
+background:#334155;
+border:none;
+border-radius:8px;
+color:white;
+">
 
 <div id="manageMovesList"></div>
 
