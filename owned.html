@@ -1001,11 +1001,23 @@ border-bottom:1px solid #334155;
 
 </div>
 
+<div style="display:flex;gap:8px;">
+
 <button onclick="editMove(${m.id})">
 
 ✏️ Edit
 
 </button>
+
+<button
+style="background:#dc2626;"
+onclick="deleteMove(${m.id})">
+
+🗑 Delete
+
+</button>
+
+</div>
 
 </div>
 
@@ -1035,6 +1047,53 @@ closeManageMoves();
 document.getElementById("moveModal").style.display="flex";
 
 }
+  async function deleteMove(moveId){
+
+const usedBy = ownedPokemon.filter(p=>p.move_id==moveId);
+
+if(usedBy.length){
+
+alert(
+`Cannot delete this move.\n\nIt is currently used by ${usedBy.length} Pokémon.`
+);
+
+return;
+
+}
+
+const move =
+moves.find(m=>m.id==moveId);
+
+if(!confirm(`Delete "${move.move_name}"?`)){
+
+return;
+
+}
+
+const {error}=await db
+
+.from("mezastar_moves")
+
+.delete()
+
+.eq("id",moveId);
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+await loadMoves();
+
+renderManageMoves();
+
+renderCards();
+
+}
+  
   async function saveNewMove(){
 console.log("saveNewMove called");
 const name =
