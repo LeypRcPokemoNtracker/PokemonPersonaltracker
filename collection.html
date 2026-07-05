@@ -1570,54 +1570,177 @@ audio.load();
 
 async function startBushRecording(){
 
+const status =
+document.getElementById("bushStatus");
+
+const startBtn =
+document.getElementById("startBushBtn");
+
+const stopBtn =
+document.getElementById("stopBushBtn");
+
+const mic =
+document.getElementById("bushMic");
+
 try{
 
-if(!navigator.mediaDevices ||
-!navigator.mediaDevices.getUserMedia){
+console.log("START LISTENING CLICKED");
 
-alert(
-"Microphone recording is not supported in this browser."
-);
+status.textContent =
+"Requesting microphone permission...";
 
-return;
+startBtn.disabled = true;
 
-}
-
-resetBushIdentifier();
-
-bushStream =
-await navigator.mediaDevices.getUserMedia({
-audio:{
-echoCancellation:false,
-noiseSuppression:false,
-autoGainControl:false
-}
-});
-
-let options = {};
+/* Check secure connection */
 
 if(
-window.MediaRecorder &&
+location.protocol !== "https:" &&
+location.hostname !== "localhost"
+){
+
+throw new Error(
+"Microphone requires HTTPS."
+);
+
+}
+
+/* Check microphone API */
+
+if(
+!navigator.mediaDevices ||
+!navigator.mediaDevices.getUserMedia
+){
+
+throw new Error(
+"Microphone API is not supported by this browser."
+);
+
+}
+
+/* Check MediaRecorder */
+
+if(
+typeof MediaRecorder === "undefined"
+){
+
+throw new Error(
+"MediaRecorder is not supported by this browser."
+);
+
+}
+
+/* Clean previous recording */
+
+clearInterval(bushTimerInterval);
+
+if(bushAudioUrl){
+
+URL.revokeObjectURL(bushAudioUrl);
+
+bushAudioUrl = null;
+
+}
+
+bushAudioChunks = [];
+bushAudioBlob = null;
+bushSeconds = 0;
+
+document.getElementById(
+"bushTimer"
+).textContent = "00:00";
+
+document.getElementById(
+"bushResult"
+).style.display = "none";
+
+document.getElementById(
+"analyzeBushBtn"
+).disabled = true;
+
+/* Request microphone */
+
+console.log(
+"Requesting microphone..."
+);
+
+bushStream =
+await navigator.mediaDevices
+.getUserMedia({
+audio:true
+});
+
+console.log(
+"Microphone granted",
+bushStream
+);
+
+/* Find supported format */
+
+let options;
+
+if(
 MediaRecorder.isTypeSupported(
 "audio/webm;codecs=opus"
 )
 ){
 
-options.mimeType =
-"audio/webm;codecs=opus";
+options = {
+mimeType:
+"audio/webm;codecs=opus"
+};
+
+}
+else if(
+MediaRecorder.isTypeSupported(
+"audio/webm"
+)
+){
+
+options = {
+mimeType:
+"audio/webm"
+};
+
+}
+else if(
+MediaRecorder.isTypeSupported(
+"audio/mp4"
+)
+){
+
+options = {
+mimeType:
+"audio/mp4"
+};
+
+}
+else{
+
+options = undefined;
 
 }
 
+/* Create recorder */
+
 bushMediaRecorder =
-new MediaRecorder(
+options
+? new MediaRecorder(
 bushStream,
 options
+)
+: new MediaRecorder(
+bushStream
 );
 
-bushAudioChunks = [];
+/* Capture audio */
 
 bushMediaRecorder.ondataavailable =
 event=>{
+
+console.log(
+"Audio chunk:",
+event.data.size
+);
 
 if(event.data.size > 0){
 
@@ -1629,7 +1752,28 @@ event.data
 
 };
 
+/* Recording stopped */
+
 bushMediaRecorder.onstop = ()=>{
+
+console.log(
+"Recorder stopped"
+);
+
+if(
+bushAudioChunks.length === 0
+){
+
+status.textContent =
+"No audio was captured.";
+
+startBtn.disabled = false;
+
+stopBushTracks();
+
+return;
+
+}
 
 const mimeType =
 bushMediaRecorder.mimeType ||
@@ -1642,6 +1786,19 @@ bushAudioChunks,
 type:mimeType
 }
 );
+
+console.log(
+"Final audio blob:",
+bushAudioBlob
+);
+
+if(bushAudioUrl){
+
+URL.revokeObjectURL(
+bushAudioUrl
+);
+
+}
 
 bushAudioUrl =
 URL.createObjectURL(
@@ -1656,39 +1813,63 @@ document.getElementById(
 audio.src =
 bushAudioUrl;
 
+audio.load();
+
 document.getElementById(
 "analyzeBushBtn"
 ).disabled = false;
 
-document.getElementById(
-"bushStatus"
-).textContent =
+status.textContent =
 "Recording captured";
+
+startBtn.disabled = false;
+
+stopBtn.disabled = true;
+
+mic.classList.remove(
+"recording"
+);
 
 stopBushTracks();
 
 };
 
-bushMediaRecorder.start();
+/* Recorder error */
 
-document.getElementById(
-"bushMic"
-).classList.add(
+bushMediaRecorder.onerror =
+event=>{
+
+console.error(
+"MediaRecorder error:",
+event
+);
+
+status.textContent =
+"Recording error occurred.";
+
+};
+
+/* Start recording */
+
+bushMediaRecorder.start(250);
+
+console.log(
+"Recorder started:",
+bushMediaRecorder.state
+);
+
+mic.classList.add(
 "recording"
 );
 
-document.getElementById(
-"bushStatus"
-).textContent =
+status.textContent =
 "Listening to bush sound...";
 
-document.getElementById(
-"startBushBtn"
-).disabled = true;
+startBtn.disabled = true;
 
-document.getElementById(
-"stopBushBtn"
-).disabled = false;
+stopBtn.disabled = false;
+
+/* Timer */
 
 bushSeconds = 0;
 
@@ -1701,8 +1882,6 @@ bushSeconds++;
 
 updateBushTimer();
 
-/* Auto-stop after 8 seconds */
-
 if(bushSeconds >= 8){
 
 stopBushRecording();
@@ -1714,13 +1893,29 @@ stopBushRecording();
 }
 catch(error){
 
-console.error(error);
+console.error(
+"START RECORDING ERROR:",
+error
+);
 
-alert(
-"Microphone access failed. Please allow microphone permission and use HTTPS."
+status.textContent =
+"Microphone failed: " +
+(error.message || "Unknown error");
+
+startBtn.disabled = false;
+
+stopBtn.disabled = true;
+
+mic.classList.remove(
+"recording"
 );
 
 stopBushTracks();
+
+alert(
+"Microphone error:\n\n" +
+(error.message || error)
+);
 
 }
 
