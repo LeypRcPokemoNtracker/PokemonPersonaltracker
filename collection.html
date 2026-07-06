@@ -1985,81 +1985,174 @@ document.getElementById(
 }
 
 /* =========================================
-   MEZASTAR BUSH SOUND MATCHING ENGINE
+-NEW!!-   MEZASTAR BUSH SOUND MATCHING ENGINE
+  MEZASTAR BUSH SOUND MATCHING ENGINE V2
+   ARCADE NOISE REDUCTION + TOP 10 FIRST
+   + MEL FEATURES + DELTAS + DTW
 ========================================= */
 
 let bushReferenceCache = null;
 let bushReferenceFeatureCache = new Map();
 
+/*
+IMPORTANT:
+These names must match pokemon_name
+in pokemon_cry_references.
+
+Change this list if your actual Top 10
+Pokémon are different.
+*/
+const BUSH_TOP_10 = [
+"Lugia",
+"Ho-Oh",
+"Solgaleo",
+"Lunala",
+"Greninja",
+"Zeraora",
+"Eternatus",
+"Keldeo",
+"Grimmsnarl",
+"Zygarde"
+];
+
+const BUSH_CFG = {
+
+fftSize:1024,
+
+hopSize:256,
+
+melBands:32,
+
+minHz:180,
+
+maxHz:8000,
+
+/*
+First part of recording is treated
+as an arcade-noise sample.
+*/
+noiseSeconds:0.45,
+
+maxFrames:220,
+
+/*
+If Top-10 result is weaker than this,
+search all remaining Pokémon.
+*/
+top10ExpandThreshold:0.62,
+
+/*
+If #1 and #2 are too close,
+show uncertain result.
+*/
+confidenceGap:0.055,
+
+minDisplayScore:0.38
+
+};
+
+
+/* =========================================
+   MAIN ANALYSIS
+========================================= */
+
 async function analyzeBushSound(){
 
 if(!bushAudioBlob){
 
-alert("Record the bush sound first.");
+alert(
+"Record the bush sound first."
+);
 
 return;
 
 }
 
 const result =
-document.getElementById("bushResult");
+document.getElementById(
+"bushResult"
+);
 
 const text =
-document.getElementById("bushResultText");
+document.getElementById(
+"bushResultText"
+);
 
 const analyzeBtn =
-document.getElementById("analyzeBushBtn");
+document.getElementById(
+"analyzeBushBtn"
+);
 
-result.style.display = "block";
+result.style.display =
+"block";
 
-analyzeBtn.disabled = true;
+analyzeBtn.disabled =
+true;
 
 text.innerHTML = `
-<strong>🔍 Analyzing bush sound...</strong>
+<strong>
+🔍 Cleaning arcade noise...
+</strong>
+
 <br><br>
+
 <span style="color:#94a3b8">
-Preparing microphone recording...
+Building a noise profile from the recording...
 </span>
 `;
 
 try{
 
-/* -----------------------------------------
-   1. Decode microphone recording
------------------------------------------ */
+/* -----------------------------
+   1. Decode microphone audio
+----------------------------- */
 
 const recordedBuffer =
-await decodeAudioBlob(bushAudioBlob);
+await decodeAudioBlob(
+bushAudioBlob
+);
 
 text.innerHTML = `
-<strong>🔍 Analyzing bush sound...</strong>
+<strong>
+🔍 Finding Pokémon cry...
+</strong>
+
 <br><br>
+
 <span style="color:#94a3b8">
-Extracting audio features...
+Removing stationary arcade noise
+and detecting active sound...
 </span>
 `;
 
-const recordedFeatures =
-extractBushFeatures(recordedBuffer);
+/* -----------------------------
+   2. Robust feature extraction
+----------------------------- */
 
-if(!recordedFeatures.length){
+const recordedPack =
+extractRobustBushFeatures(
+recordedBuffer,
+true
+);
+
+if(
+!recordedPack.features.length
+){
 
 throw new Error(
-"No usable sound detected in recording."
+"No strong cry-like sound was detected. Try recording closer to the speaker."
 );
 
 }
 
-/* -----------------------------------------
-   2. Load reference rows from Supabase
------------------------------------------ */
+/* -----------------------------
+   3. Load Supabase references
+----------------------------- */
 
 text.innerHTML = `
-<strong>🔍 Analyzing bush sound...</strong>
-<br><br>
-<span style="color:#94a3b8">
-Loading Pokémon cry references...
-</span>
+<strong>
+🔍 Loading cry references...
+</strong>
 `;
 
 const references =
@@ -2073,102 +2166,110 @@ throw new Error(
 
 }
 
-/* -----------------------------------------
-   3. Compare recording against references
------------------------------------------ */
+/* -----------------------------
+   4. Separate Top 10
+----------------------------- */
 
-const matches = [];
+const top10Refs =
+references.filter(
+ref =>
+isBushTop10(
+ref.pokemon_name
+)
+);
 
-for(
-let i = 0;
-i < references.length;
-i++
+const otherRefs =
+references.filter(
+ref =>
+!isBushTop10(
+ref.pokemon_name
+)
+);
+
+/*
+Top 10 are searched FIRST.
+
+There is NO fake score boost.
+*/
+let matches =
+await compareBushReferenceSet(
+recordedPack.features,
+top10Refs,
+text,
+"Top 10"
+);
+
+let grouped =
+groupBushMatches(
+matches
+)
+.sort(
+(a,b)=>b.score-a.score
+);
+
+const bestTop10 =
+grouped[0]?.score || 0;
+
+/* -----------------------------
+   5. Expand when confidence weak
+----------------------------- */
+
+if(
+bestTop10 <
+BUSH_CFG.top10ExpandThreshold
 ){
 
-const ref =
-references[i];
-
 text.innerHTML = `
-<strong>🔍 Comparing sounds...</strong>
+<strong>
+🔍 Top-10 confidence is weak...
+</strong>
+
 <br><br>
 
-<span style="color:#cbd5e1">
-${i + 1} / ${references.length}
-</span>
-
-<br>
-
 <span style="color:#94a3b8">
-${escapeBushHtml(ref.pokemon_name)}
+Searching the full Pokémon library.
 </span>
 `;
 
-try{
-
-const referenceFeatures =
-await getBushReferenceFeatures(ref);
-
-if(!referenceFeatures.length){
-continue;
-}
-
-let score =
-compareBushFeatureSequences(
-recordedFeatures,
-referenceFeatures
+const moreMatches =
+await compareBushReferenceSet(
+recordedPack.features,
+otherRefs,
+text,
+"Full Library"
 );
 
-const isTop10 =
-BUSH_TOP_10.some(name =>
-name.toLowerCase() ===
-ref.pokemon_name.toLowerCase()
+matches.push(
+...moreMatches
 );
 
-if(isTop10){
-score = Math.min(1, score * 1.08);
-}
-
-if(Number.isFinite(score)){
-
-matches.push({
-pokemon_name:ref.pokemon_name,
-score:score,
-storage_path:ref.storage_path
-});
-
-}
-
-}
-catch(error){
-
-console.warn(
-"Reference skipped:",
-ref.storage_path,
-error
+grouped =
+groupBushMatches(
+matches
+)
+.sort(
+(a,b)=>b.score-a.score
 );
 
 }
-
-}
-
-/* -----------------------------------------
-   4. Group duplicate Pokémon references
------------------------------------------ */
-
-const grouped =
-groupBushMatches(matches);
 
 const topMatches =
-grouped
-.sort((a,b)=>b.score-a.score)
-.slice(0,5);
+grouped.slice(
+0,
+5
+);
 
-showBushResults(topMatches);
+showBushResultsV2(
+topMatches
+);
 
 }
 catch(error){
 
-console.error(error);
+console.error(
+"Bush analysis error:",
+error
+);
 
 text.innerHTML = `
 <strong style="color:#f87171">
@@ -2188,9 +2289,134 @@ error.message ||
 }
 finally{
 
-analyzeBtn.disabled = false;
+analyzeBtn.disabled =
+false;
 
 }
+
+}
+
+
+/* =========================================
+   COMPARE A SET OF REFERENCES
+========================================= */
+
+async function compareBushReferenceSet(
+recordedFeatures,
+references,
+text,
+stageName
+){
+
+const matches = [];
+
+for(
+let i=0;
+i<references.length;
+i++
+){
+
+const ref =
+references[i];
+
+text.innerHTML = `
+<strong>
+🔍 ${escapeBushHtml(stageName)} matching...
+</strong>
+
+<br><br>
+
+<span style="color:#cbd5e1">
+${i+1} / ${references.length}
+</span>
+
+<br>
+
+<span style="color:#94a3b8">
+${escapeBushHtml(
+ref.pokemon_name
+)}
+</span>
+`;
+
+try{
+
+const referenceFeatures =
+await getBushReferenceFeaturesV2(
+ref
+);
+
+if(
+referenceFeatures.length < 3
+){
+continue;
+}
+
+const score =
+compareBushDTW(
+recordedFeatures,
+referenceFeatures
+);
+
+if(
+Number.isFinite(score)
+){
+
+matches.push({
+
+pokemon_name:
+ref.pokemon_name,
+
+score:score,
+
+storage_path:
+ref.storage_path
+
+});
+
+}
+
+}
+catch(error){
+
+console.warn(
+"Reference skipped:",
+ref.storage_path,
+error
+);
+
+}
+
+}
+
+return matches;
+
+}
+
+
+/* =========================================
+   TOP 10 CHECK
+========================================= */
+
+function isBushTop10(
+pokemonName
+){
+
+const normalized =
+String(
+pokemonName || ""
+)
+.trim()
+.toLowerCase();
+
+return BUSH_TOP_10.some(
+name =>
+name
+.trim()
+.toLowerCase()
+===
+normalized
+);
 
 }
 
@@ -2201,13 +2427,22 @@ analyzeBtn.disabled = false;
 
 async function loadBushReferences(){
 
-if(bushReferenceCache){
+if(
+bushReferenceCache
+){
+
 return bushReferenceCache;
+
 }
 
-const {data,error} =
+const {
+data,
+error
+} =
 await db
-.from("pokemon_cry_references")
+.from(
+"pokemon_cry_references"
+)
 .select(`
 id,
 pokemon_name,
@@ -2215,10 +2450,14 @@ audio_url,
 storage_path,
 verified
 `)
-.order("id");
+.order(
+"id"
+);
 
 if(error){
+
 throw error;
+
 }
 
 bushReferenceCache =
@@ -2230,27 +2469,40 @@ return bushReferenceCache;
 
 
 /* =========================================
-   DOWNLOAD + PROCESS REFERENCE
+   DOWNLOAD + CACHE REFERENCE FEATURES
 ========================================= */
 
-async function getBushReferenceFeatures(ref){
+async function getBushReferenceFeaturesV2(
+ref
+){
+
+const cacheKey =
+"v2:" +
+(
+ref.storage_path ||
+ref.audio_url
+);
 
 if(
 bushReferenceFeatureCache.has(
-ref.storage_path
+cacheKey
 )
 ){
 
 return bushReferenceFeatureCache.get(
-ref.storage_path
+cacheKey
 );
 
 }
 
 const response =
-await fetch(ref.audio_url);
+await fetch(
+ref.audio_url
+);
 
-if(!response.ok){
+if(
+!response.ok
+){
 
 throw new Error(
 `Could not load ${ref.storage_path}`
@@ -2262,17 +2514,29 @@ const blob =
 await response.blob();
 
 const audioBuffer =
-await decodeAudioBlob(blob);
-
-const features =
-extractBushFeatures(audioBuffer);
-
-bushReferenceFeatureCache.set(
-ref.storage_path,
-features
+await decodeAudioBlob(
+blob
 );
 
-return features;
+/*
+References are already trimmed,
+so isRecording = false.
+
+We do NOT remove the first 0.45 sec
+from reference clips.
+*/
+const featurePack =
+extractRobustBushFeatures(
+audioBuffer,
+false
+);
+
+bushReferenceFeatureCache.set(
+cacheKey,
+featurePack.features
+);
+
+return featurePack.features;
 
 }
 
@@ -2281,7 +2545,9 @@ return features;
    DECODE AUDIO
 ========================================= */
 
-async function decodeAudioBlob(blob){
+async function decodeAudioBlob(
+blob
+){
 
 const arrayBuffer =
 await blob.arrayBuffer();
@@ -2290,7 +2556,9 @@ const AudioContextClass =
 window.AudioContext ||
 window.webkitAudioContext;
 
-if(!AudioContextClass){
+if(
+!AudioContextClass
+){
 
 throw new Error(
 "Web Audio API is not supported."
@@ -2321,480 +2589,648 @@ await audioContext.close();
 
 
 /* =========================================
-   EXTRACT NORMALIZED SPECTRAL FEATURES
+   ROBUST FEATURE EXTRACTION
 ========================================= */
 
-function extractBushFeatures(audioBuffer){
+function extractRobustBushFeatures(
+audioBuffer,
+isRecording
+){
 
 const mono =
-convertBushToMono(audioBuffer);
-
-if(!mono.length){
-return [];
-}
+convertBushToMono(
+audioBuffer
+);
 
 const sampleRate =
 audioBuffer.sampleRate;
 
+const fftSize =
+BUSH_CFG.fftSize;
+
+const hopSize =
+BUSH_CFG.hopSize;
+
+if(
+mono.length < fftSize
+){
+
+return {
+features:[],
+eventFrames:0
+};
+
+}
+
 /*
-Window around 46 ms at 44.1 kHz.
-Power-of-two FFT size.
+Pre-emphasis.
+
+Reduces low-frequency arcade rumble
+and emphasizes fast cry details.
 */
 
-const fftSize = 2048;
+const emphasized =
+new Float32Array(
+mono.length
+);
 
-const hopSize = 512;
+emphasized[0] =
+mono[0];
 
-if(mono.length < fftSize){
-return [];
+for(
+let i=1;
+i<mono.length;
+i++
+){
+
+emphasized[i] =
+mono[i] -
+0.97 *
+mono[i-1];
+
 }
 
 const window =
-createBushHannWindow(fftSize);
-
-const frames = [];
-
-/*
-Frequency bands chosen to reduce:
-- deep arcade rumble
-- very high hiss
-
-Main comparison region:
-roughly 150 Hz to 8 kHz
-*/
-
-const minHz = 150;
-
-const maxHz =
-Math.min(
-8000,
-sampleRate / 2
+createBushHannWindow(
+fftSize
 );
 
-const bandCount = 24;
+const rawFrames = [];
+
+/* -----------------------------
+   Build spectral frames
+----------------------------- */
 
 for(
-let start = 0;
-start + fftSize <= mono.length;
-start += hopSize
+let start=0;
+start+fftSize<=emphasized.length;
+start+=hopSize
 ){
 
 const frame =
-new Float32Array(fftSize);
+new Float32Array(
+fftSize
+);
 
 let energy = 0;
 
 for(
-let i = 0;
-i < fftSize;
+let i=0;
+i<fftSize;
 i++
 ){
 
 const value =
-mono[start + i] *
+emphasized[start+i] *
 window[i];
 
-frame[i] = value;
+frame[i] =
+value;
 
-energy += value * value;
+energy +=
+value * value;
 
 }
-
-/*
-Skip nearly silent frames
-*/
 
 const rms =
 Math.sqrt(
-energy / fftSize
+energy /
+fftSize
 );
 
-if(rms < 0.008){
-continue;
+const spectrum =
+calculateBushMagnitudeSpectrum(
+frame
+);
+
+const melBands =
+spectrumToMelBands(
+spectrum,
+sampleRate,
+fftSize,
+BUSH_CFG.minHz,
+Math.min(
+BUSH_CFG.maxHz,
+sampleRate/2 - 1
+),
+BUSH_CFG.melBands
+);
+
+rawFrames.push({
+
+rms:rms,
+
+mel:melBands
+
+});
+
 }
 
-const spectrum =
-calculateBushMagnitudeSpectrum(frame);
+if(
+!rawFrames.length
+){
+
+return {
+features:[],
+eventFrames:0
+};
+
+}
+
+
+/* =========================================
+   ARCADE NOISE PROFILE
+========================================= */
+
+const noiseProfile =
+new Float32Array(
+BUSH_CFG.melBands
+);
+
+if(
+isRecording
+){
+
+const noiseFrameCount =
+Math.max(
+1,
+Math.min(
+rawFrames.length,
+Math.floor(
+BUSH_CFG.noiseSeconds *
+sampleRate /
+hopSize
+)
+)
+);
+
+for(
+let i=0;
+i<noiseFrameCount;
+i++
+){
+
+for(
+let band=0;
+band<BUSH_CFG.melBands;
+band++
+){
+
+noiseProfile[band] +=
+rawFrames[i].mel[band] /
+noiseFrameCount;
+
+}
+
+}
+
+}
+
+
+/* =========================================
+   SPECTRAL SUBTRACTION
+========================================= */
+
+const cleanedFrames =
+rawFrames.map(
+frame=>{
 
 const bands =
-spectrumToBushBands(
+new Float32Array(
+BUSH_CFG.melBands
+);
+
+let totalBandEnergy = 0;
+
+for(
+let band=0;
+band<bands.length;
+band++
+){
+
+const original =
+frame.mel[band];
+
+const estimatedNoise =
+isRecording
+?
+1.10 *
+noiseProfile[band]
+:
+0;
+
+/*
+Subtract stationary background.
+
+Keep a small floor so the spectrum
+does not become unnatural.
+*/
+const cleaned =
+Math.max(
+
+original -
+estimatedNoise,
+
+original *
+0.04
+
+);
+
+bands[band] =
+Math.log1p(
+cleaned * 12
+);
+
+totalBandEnergy +=
+cleaned;
+
+}
+
+return {
+
+bands:bands,
+
+bandEnergy:
+totalBandEnergy
+
+};
+
+}
+);
+
+
+/* =========================================
+   ACTIVE CRY REGION DETECTION
+========================================= */
+
+const sortedEnergies =
+cleanedFrames
+.map(
+frame =>
+frame.bandEnergy
+)
+.sort(
+(a,b)=>a-b
+);
+
+const median =
+sortedEnergies[
+Math.floor(
+sortedEnergies.length *
+0.50
+)
+] || 0;
+
+const p75 =
+sortedEnergies[
+Math.floor(
+sortedEnergies.length *
+0.75
+)
+] || median;
+
+const threshold =
+isRecording
+?
+Math.max(
+median * 1.35,
+p75 * 0.88
+)
+:
+Math.max(
+median * 0.45,
+1e-8
+);
+
+let selectedFrames =
+cleanedFrames;
+
+if(
+isRecording
+){
+
+const activeIndexes =
+cleanedFrames
+.map(
+(frame,index)=>
+frame.bandEnergy >= threshold
+?
+index
+:
+-1
+)
+.filter(
+index=>index>=0
+);
+
+if(
+activeIndexes.length
+){
+
+/*
+Keep some audio before and after
+the detected cry.
+*/
+
+const padding =
+Math.ceil(
+0.18 *
+sampleRate /
+hopSize
+);
+
+const first =
+Math.max(
+0,
+activeIndexes[0] -
+padding
+);
+
+const last =
+Math.min(
+cleanedFrames.length-1,
+activeIndexes[
+activeIndexes.length-1
+] +
+padding
+);
+
+selectedFrames =
+cleanedFrames.slice(
+first,
+last+1
+);
+
+}
+
+}
+
+
+/* =========================================
+   NORMALIZE BASE FEATURES
+========================================= */
+
+const baseFeatures =
+selectedFrames.map(
+frame=>{
+
+const vector =
+new Float32Array(
+frame.bands
+);
+
+normalizeBushVector(
+vector
+);
+
+return vector;
+
+}
+);
+
+
+/* =========================================
+   ADD TEMPORAL DELTA FEATURES
+========================================= */
+
+const finalFeatures = [];
+
+for(
+let i=0;
+i<baseFeatures.length;
+i++
+){
+
+const previous =
+baseFeatures[
+Math.max(
+0,
+i-2
+)
+];
+
+const next =
+baseFeatures[
+Math.min(
+baseFeatures.length-1,
+i+2
+)
+];
+
+const combined =
+new Float32Array(
+BUSH_CFG.melBands * 2
+);
+
+for(
+let band=0;
+band<BUSH_CFG.melBands;
+band++
+){
+
+/*
+First half:
+current spectral shape
+*/
+combined[band] =
+baseFeatures[i][band];
+
+/*
+Second half:
+how sound changes over time
+*/
+combined[
+BUSH_CFG.melBands +
+band
+] =
+(
+next[band] -
+previous[band]
+) *
+0.5;
+
+}
+
+normalizeBushVector(
+combined
+);
+
+finalFeatures.push(
+combined
+);
+
+}
+
+return {
+
+features:
+downsampleBushFrames(
+finalFeatures,
+BUSH_CFG.maxFrames
+),
+
+eventFrames:
+selectedFrames.length
+
+};
+
+}
+
+
+/* =========================================
+   MEL FILTER BANK
+========================================= */
+
+function spectrumToMelBands(
 spectrum,
 sampleRate,
 fftSize,
 minHz,
 maxHz,
 bandCount
+){
+
+const hzToMel =
+hz =>
+2595 *
+Math.log10(
+1 + hz/700
 );
 
-/*
-Log compression
-*/
-
-for(
-let i = 0;
-i < bands.length;
-i++
-){
-
-bands[i] =
-Math.log1p(
-bands[i] * 20
-);
-
-}
-
-/*
-Normalize each frame
-*/
-
-normalizeBushVector(bands);
-
-frames.push(bands);
-
-}
-
-/*
-Limit extremely long recordings.
-Keep representative frames.
-*/
-
-return downsampleBushFrames(
-frames,
-180
-);
-
-}
-
-
-/* =========================================
-   CONVERT MULTI-CHANNEL AUDIO TO MONO
-========================================= */
-
-function convertBushToMono(audioBuffer){
-
-const length =
-audioBuffer.length;
-
-const channels =
-audioBuffer.numberOfChannels;
-
-const mono =
-new Float32Array(length);
-
-for(
-let c = 0;
-c < channels;
-c++
-){
-
-const data =
-audioBuffer.getChannelData(c);
-
-for(
-let i = 0;
-i < length;
-i++
-){
-
-mono[i] +=
-data[i] / channels;
-
-}
-
-}
-
-return mono;
-
-}
-
-
-/* =========================================
-   HANN WINDOW
-========================================= */
-
-function createBushHannWindow(size){
-
-const window =
-new Float32Array(size);
-
-for(
-let i = 0;
-i < size;
-i++
-){
-
-window[i] =
-0.5 *
+const melToHz =
+mel =>
+700 *
 (
-1 -
-Math.cos(
-(2 * Math.PI * i) /
-(size - 1)
+Math.pow(
+10,
+mel/2595
+) -
+1
+);
+
+const minMel =
+hzToMel(
+minHz
+);
+
+const maxMel =
+hzToMel(
+maxHz
+);
+
+const points = [];
+
+for(
+let i=0;
+i<bandCount+2;
+i++
+){
+
+const mel =
+minMel +
+(
+maxMel-minMel
+) *
+i /
+(
+bandCount+1
+);
+
+const hz =
+melToHz(
+mel
+);
+
+points.push(
+Math.floor(
+(fftSize+1) *
+hz /
+sampleRate
 )
 );
 
 }
 
-return window;
-
-}
-
-
-/* =========================================
-   FFT
-   Iterative radix-2 implementation
-========================================= */
-
-function calculateBushMagnitudeSpectrum(input){
-
-const n =
-input.length;
-
-const real =
-new Float64Array(n);
-
-const imag =
-new Float64Array(n);
-
-for(
-let i = 0;
-i < n;
-i++
-){
-
-real[i] = input[i];
-
-}
-
-/*
-Bit reversal
-*/
-
-let j = 0;
-
-for(
-let i = 1;
-i < n;
-i++
-){
-
-let bit = n >> 1;
-
-while(j & bit){
-
-j ^= bit;
-bit >>= 1;
-
-}
-
-j ^= bit;
-
-if(i < j){
-
-const tempReal =
-real[i];
-
-real[i] =
-real[j];
-
-real[j] =
-tempReal;
-
-}
-
-}
-
-/*
-FFT stages
-*/
-
-for(
-let len = 2;
-len <= n;
-len <<= 1
-){
-
-const angle =
--2 * Math.PI / len;
-
-const wLenCos =
-Math.cos(angle);
-
-const wLenSin =
-Math.sin(angle);
-
-for(
-let i = 0;
-i < n;
-i += len
-){
-
-let wCos = 1;
-let wSin = 0;
-
-for(
-let k = 0;
-k < len / 2;
-k++
-){
-
-const even =
-i + k;
-
-const odd =
-i + k + len / 2;
-
-const oddReal =
-real[odd] * wCos -
-imag[odd] * wSin;
-
-const oddImag =
-real[odd] * wSin +
-imag[odd] * wCos;
-
-real[odd] =
-real[even] - oddReal;
-
-imag[odd] =
-imag[even] - oddImag;
-
-real[even] += oddReal;
-
-imag[even] += oddImag;
-
-const nextCos =
-wCos * wLenCos -
-wSin * wLenSin;
-
-const nextSin =
-wCos * wLenSin +
-wSin * wLenCos;
-
-wCos =
-nextCos;
-
-wSin =
-nextSin;
-
-}
-
-}
-
-}
-
-const spectrum =
-new Float32Array(
-n / 2
-);
-
-for(
-let i = 0;
-i < spectrum.length;
-i++
-){
-
-spectrum[i] =
-Math.sqrt(
-real[i] * real[i] +
-imag[i] * imag[i]
-);
-
-}
-
-return spectrum;
-
-}
-
-
-/* =========================================
-   CONVERT FFT INTO LOG-SPACED BANDS
-========================================= */
-
-function spectrumToBushBands(
-spectrum,
-sampleRate,
-fftSize,
-minHz,
-maxHz,
-bandCount
-){
-
 const bands =
 new Float32Array(
 bandCount
 );
 
-const counts =
-new Uint32Array(
-bandCount
+for(
+let melBand=1;
+melBand<=bandCount;
+melBand++
+){
+
+const left =
+Math.max(
+0,
+points[melBand-1]
 );
 
-const logMin =
-Math.log(minHz);
+const center =
+Math.max(
+left+1,
+points[melBand]
+);
 
-const logMax =
-Math.log(maxHz);
+const right =
+Math.max(
+center+1,
+points[melBand+1]
+);
+
+/*
+Rising triangle
+*/
 
 for(
-let bin = 1;
-bin < spectrum.length;
+let bin=left;
+bin<center &&
+bin<spectrum.length;
 bin++
 ){
 
-const hz =
-bin *
-sampleRate /
-fftSize;
+bands[
+melBand-1
+] +=
 
-if(
-hz < minHz ||
-hz > maxHz
-){
-continue;
-}
+spectrum[bin] *
 
-const position =
 (
-Math.log(hz) -
-logMin
+bin-left
 ) /
+
 (
-logMax -
-logMin
+center-left
 );
-
-let band =
-Math.floor(
-position *
-bandCount
-);
-
-band =
-Math.max(
-0,
-Math.min(
-bandCount - 1,
-band
-)
-);
-
-bands[band] +=
-spectrum[bin];
-
-counts[band]++;
 
 }
+
+/*
+Falling triangle
+*/
 
 for(
-let i = 0;
-i < bandCount;
-i++
+let bin=center;
+bin<right &&
+bin<spectrum.length;
+bin++
 ){
 
-if(counts[i]){
+bands[
+melBand-1
+] +=
 
-bands[i] /=
-counts[i];
+spectrum[bin] *
+
+(
+right-bin
+) /
+
+(
+right-center
+);
 
 }
 
@@ -2806,111 +3242,10 @@ return bands;
 
 
 /* =========================================
-   VECTOR NORMALIZATION
+   DTW MATCHING
 ========================================= */
 
-function normalizeBushVector(vector){
-
-let sum = 0;
-
-for(
-let i = 0;
-i < vector.length;
-i++
-){
-
-sum += vector[i];
-
-}
-
-const mean =
-sum / vector.length;
-
-let variance = 0;
-
-for(
-let i = 0;
-i < vector.length;
-i++
-){
-
-const diff =
-vector[i] - mean;
-
-variance +=
-diff * diff;
-
-}
-
-const std =
-Math.sqrt(
-variance /
-vector.length
-) || 1;
-
-for(
-let i = 0;
-i < vector.length;
-i++
-){
-
-vector[i] =
-(
-vector[i] - mean
-) / std;
-
-}
-
-}
-
-
-/* =========================================
-   LIMIT NUMBER OF FRAMES
-========================================= */
-
-function downsampleBushFrames(
-frames,
-maxFrames
-){
-
-if(
-frames.length <= maxFrames
-){
-
-return frames;
-
-}
-
-const result = [];
-
-const step =
-frames.length /
-maxFrames;
-
-for(
-let i = 0;
-i < maxFrames;
-i++
-){
-
-result.push(
-frames[
-Math.floor(i * step)
-]
-);
-
-}
-
-return result;
-
-}
-
-
-/* =========================================
-   FEATURE SEQUENCE COMPARISON
-========================================= */
-
-function compareBushFeatureSequences(
+function compareBushDTW(
 recorded,
 reference
 ){
@@ -2925,170 +3260,141 @@ return 0;
 }
 
 /*
-Compare shorter sequence against
-different offsets in longer sequence.
-This helps when the user starts
-recording too early or too late.
+Limit size for phone performance.
 */
 
-let shorter = recorded;
-let longer = reference;
+const sequenceA =
+downsampleBushFrames(
+recorded,
+150
+);
 
-if(
-recorded.length >
-reference.length
-){
+const sequenceB =
+downsampleBushFrames(
+reference,
+150
+);
 
-shorter = reference;
-longer = recorded;
+const lengthA =
+sequenceA.length;
 
-}
+const lengthB =
+sequenceB.length;
+
+const previousRow =
+new Float64Array(
+lengthB+1
+);
+
+const currentRow =
+new Float64Array(
+lengthB+1
+);
+
+previousRow.fill(
+Infinity
+);
+
+previousRow[0] =
+0;
 
 /*
-Prevent very tiny comparisons
+Timing tolerance.
+
+Allows the live recording to be
+slower/faster than reference audio.
 */
 
-const compareLength =
-Math.min(
-shorter.length,
-120
-);
-
-if(compareLength < 4){
-return 0;
-}
-
-const shortSeq =
-downsampleBushFrames(
-shorter,
-compareLength
-);
-
-const maxOffset =
+const band =
 Math.max(
-0,
-longer.length -
-compareLength
+
+18,
+
+Math.abs(
+lengthA -
+lengthB
+) +
+18
+
 );
 
-const offsetStep =
+for(
+let i=1;
+i<=lengthA;
+i++
+){
+
+currentRow.fill(
+Infinity
+);
+
+const startJ =
 Math.max(
 1,
-Math.floor(
-compareLength / 12
+i-band
+);
+
+const endJ =
+Math.min(
+lengthB,
+i+band
+);
+
+for(
+let j=startJ;
+j<=endJ;
+j++
+){
+
+const similarity =
+cosineBushSimilarity(
+
+sequenceA[i-1],
+
+sequenceB[j-1]
+
+);
+
+const cost =
+1 -
+Math.max(
+-1,
+Math.min(
+1,
+similarity
 )
 );
 
-let bestSimilarity =
--Infinity;
+currentRow[j] =
+cost +
+Math.min(
 
-for(
-let offset = 0;
-offset <= maxOffset;
-offset += offsetStep
-){
+previousRow[j],
 
-let total = 0;
+currentRow[j-1],
 
-let count = 0;
+previousRow[j-1]
 
-for(
-let i = 0;
-i < compareLength;
-i++
-){
-
-const longIndex =
-offset + i;
-
-if(
-longIndex >=
-longer.length
-){
-break;
-}
-
-total +=
-cosineBushSimilarity(
-shortSeq[i],
-longer[longIndex]
 );
 
-count++;
-
 }
 
-if(count){
-
-const average =
-total / count;
-
-if(
-average >
-bestSimilarity
-){
-
-bestSimilarity =
-average;
-
-}
-
-}
-
-}
-
-/*
-Also ensure final possible offset
-is tested
-*/
-
-if(maxOffset > 0){
-
-let total = 0;
-
-let count = 0;
-
-for(
-let i = 0;
-i < compareLength;
-i++
-){
-
-const longIndex =
-maxOffset + i;
-
-if(
-longIndex >=
-longer.length
-){
-break;
-}
-
-total +=
-cosineBushSimilarity(
-shortSeq[i],
-longer[longIndex]
+previousRow.set(
+currentRow
 );
 
-count++;
-
 }
 
-if(count){
-
-bestSimilarity =
+const normalizedCost =
+previousRow[lengthB] /
 Math.max(
-bestSimilarity,
-total / count
+lengthA,
+lengthB
 );
-
-}
-
-}
 
 if(
 !Number.isFinite(
-bestSimilarity
+normalizedCost
 )
 ){
 
@@ -3097,15 +3403,17 @@ return 0;
 }
 
 /*
-Convert cosine similarity
-roughly from -1..1 into 0..1.
+Convert DTW distance to 0..1.
 */
 
 return Math.max(
 0,
 Math.min(
 1,
-(bestSimilarity + 1) / 2
+Math.exp(
+-1.7 *
+normalizedCost
+)
 )
 );
 
@@ -3113,78 +3421,36 @@ Math.min(
 
 
 /* =========================================
-   COSINE SIMILARITY
+   GROUP DUPLICATE REFERENCES
 ========================================= */
 
-function cosineBushSimilarity(a,b){
-
-const length =
-Math.min(
-a.length,
-b.length
-);
-
-let dot = 0;
-let magA = 0;
-let magB = 0;
-
-for(
-let i = 0;
-i < length;
-i++
+function groupBushMatches(
+matches
 ){
-
-dot +=
-a[i] * b[i];
-
-magA +=
-a[i] * a[i];
-
-magB +=
-b[i] * b[i];
-
-}
-
-if(
-magA === 0 ||
-magB === 0
-){
-
-return 0;
-
-}
-
-return dot /
-(
-Math.sqrt(magA) *
-Math.sqrt(magB)
-);
-
-}
-
-
-/* =========================================
-   GROUP DUPLICATE POKÉMON REFERENCES
-========================================= */
-
-function groupBushMatches(matches){
 
 const grouped = {};
 
-matches.forEach(match=>{
+matches.forEach(
+match=>{
 
 const key =
+String(
 match.pokemon_name
+)
 .trim()
 .toLowerCase();
 
-if(!grouped[key]){
+if(
+!grouped[key]
+){
 
 grouped[key] = {
+
 pokemon_name:
 match.pokemon_name,
 
 scores:[]
+
 };
 
 }
@@ -3195,51 +3461,70 @@ grouped[key]
 match.score
 );
 
-});
+}
+);
 
 return Object
-.values(grouped)
-.map(group=>{
+.values(
+grouped
+)
+.map(
+group=>{
 
 const sorted =
 group.scores
-.sort((a,b)=>b-a);
+.sort(
+(a,b)=>b-a
+);
 
 /*
-Use strongest reference score.
-Multiple references remain useful
-without unfairly averaging a good
-sample with a noisy sample.
+If multiple references exist,
+use mostly the strongest reference
+plus some support from #2.
 */
 
+const score =
+sorted.length > 1
+?
+sorted[0] * 0.78 +
+sorted[1] * 0.22
+:
+sorted[0];
+
 return {
+
 pokemon_name:
 group.pokemon_name,
 
-score:
-sorted[0],
+score:score,
 
 reference_count:
 sorted.length
+
 };
 
-});
+}
+);
 
 }
 
 
 /* =========================================
-   SHOW TOP RESULTS
+   SHOW RESULTS V2
 ========================================= */
 
-function showBushResults(matches){
+function showBushResultsV2(
+matches
+){
 
 const text =
 document.getElementById(
 "bushResultText"
 );
 
-if(!matches.length){
+if(
+!matches.length
+){
 
 text.innerHTML = `
 <strong>
@@ -3258,18 +3543,53 @@ return;
 
 }
 
+const first =
+matches[0];
+
+const second =
+matches[1];
+
+const scoreGap =
+second
+?
+first.score -
+second.score
+:
+first.score;
+
+const uncertain =
+
+first.score <
+BUSH_CFG.minDisplayScore
+
+||
+
+(
+second &&
+scoreGap <
+BUSH_CFG.confidenceGap
+);
+
 let html = `
 <div
 style="
 margin-bottom:14px;
 padding:10px 12px;
 border-radius:10px;
-background:#312e81;
-border:1px solid #6366f1;
+background:
+${uncertain
+? "#451a03"
+: "#052e16"};
+border:1px solid
+${uncertain
+? "#f59e0b"
+: "#22c55e"};
 ">
 
 <strong>
-🧪 Experimental Match
+${uncertain
+? "⚠️ Uncertain Match"
+: "✅ Likely Match"}
 </strong>
 
 <br>
@@ -3277,9 +3597,16 @@ border:1px solid #6366f1;
 <span
 style="
 font-size:12px;
-color:#c7d2fe;
+color:#cbd5e1;
 ">
-Current reference clips are not yet verified.
+
+${uncertain
+?
+"Top results are too close. Record again nearer the speaker."
+:
+"Noise-reduced matching found a clearer result."
+}
+
 </span>
 
 </div>
@@ -3290,7 +3617,8 @@ matches.forEach(
 
 const percent =
 Math.round(
-match.score * 100
+match.score *
+100
 );
 
 html += `
@@ -3310,7 +3638,7 @@ align-items:center;
 ">
 
 <strong>
-${index + 1}.
+${index+1}.
 ${escapeBushHtml(
 match.pokemon_name
 )}
@@ -3321,11 +3649,13 @@ style="
 font-size:18px;
 font-weight:bold;
 color:
-${index === 0
+${index===0
 ? "#facc15"
 : "#cbd5e1"};
 ">
+
 ${percent}%
+
 </span>
 
 </div>
@@ -3357,7 +3687,8 @@ linear-gradient(
 </div>
 `;
 
-});
+}
+);
 
 html += `
 <div
@@ -3367,12 +3698,526 @@ font-size:12px;
 line-height:1.5;
 color:#94a3b8;
 ">
-Percentages are similarity scores,
-not guaranteed identification probabilities.
+
+Top 10 Pokémon are checked first.
+If confidence is weak,
+the full reference library is searched.
+
+<br><br>
+
+Scores are similarities,
+not guaranteed probabilities.
+
 </div>
 `;
 
-text.innerHTML = html;
+text.innerHTML =
+html;
+
+}
+
+
+/* =========================================
+   CONVERT AUDIO TO MONO
+========================================= */
+
+function convertBushToMono(
+audioBuffer
+){
+
+const mono =
+new Float32Array(
+audioBuffer.length
+);
+
+for(
+let channel=0;
+channel<audioBuffer.numberOfChannels;
+channel++
+){
+
+const data =
+audioBuffer.getChannelData(
+channel
+);
+
+for(
+let i=0;
+i<data.length;
+i++
+){
+
+mono[i] +=
+
+data[i] /
+
+audioBuffer.numberOfChannels;
+
+}
+
+}
+
+return mono;
+
+}
+
+
+/* =========================================
+   HANN WINDOW
+========================================= */
+
+function createBushHannWindow(
+size
+){
+
+const window =
+new Float32Array(
+size
+);
+
+for(
+let i=0;
+i<size;
+i++
+){
+
+window[i] =
+
+0.5 *
+
+(
+1 -
+
+Math.cos(
+
+(2*Math.PI*i) /
+
+(size-1)
+
+)
+
+);
+
+}
+
+return window;
+
+}
+
+
+/* =========================================
+   FFT
+========================================= */
+
+function calculateBushMagnitudeSpectrum(
+input
+){
+
+const size =
+input.length;
+
+const real =
+new Float64Array(
+size
+);
+
+const imaginary =
+new Float64Array(
+size
+);
+
+for(
+let i=0;
+i<size;
+i++
+){
+
+real[i] =
+input[i];
+
+}
+
+/* Bit reversal */
+
+let j = 0;
+
+for(
+let i=1;
+i<size;
+i++
+){
+
+let bit =
+size >> 1;
+
+while(
+j & bit
+){
+
+j ^= bit;
+
+bit >>= 1;
+
+}
+
+j ^= bit;
+
+if(
+i < j
+){
+
+const temporary =
+real[i];
+
+real[i] =
+real[j];
+
+real[j] =
+temporary;
+
+}
+
+}
+
+/* FFT stages */
+
+for(
+let length=2;
+length<=size;
+length<<=1
+){
+
+const angle =
+-2 *
+Math.PI /
+length;
+
+const cosine =
+Math.cos(
+angle
+);
+
+const sine =
+Math.sin(
+angle
+);
+
+for(
+let i=0;
+i<size;
+i+=length
+){
+
+let currentCosine =
+1;
+
+let currentSine =
+0;
+
+for(
+let k=0;
+k<length/2;
+k++
+){
+
+const even =
+i+k;
+
+const odd =
+i+k+
+length/2;
+
+const oddReal =
+
+real[odd] *
+currentCosine
+
+-
+
+imaginary[odd] *
+currentSine;
+
+const oddImaginary =
+
+real[odd] *
+currentSine
+
++
+
+imaginary[odd] *
+currentCosine;
+
+real[odd] =
+real[even] -
+oddReal;
+
+imaginary[odd] =
+imaginary[even] -
+oddImaginary;
+
+real[even] +=
+oddReal;
+
+imaginary[even] +=
+oddImaginary;
+
+const nextCosine =
+
+currentCosine *
+cosine
+
+-
+
+currentSine *
+sine;
+
+const nextSine =
+
+currentCosine *
+sine
+
++
+
+currentSine *
+cosine;
+
+currentCosine =
+nextCosine;
+
+currentSine =
+nextSine;
+
+}
+
+}
+
+}
+
+const spectrum =
+new Float32Array(
+size/2
+);
+
+for(
+let i=0;
+i<spectrum.length;
+i++
+){
+
+spectrum[i] =
+
+Math.sqrt(
+
+real[i] *
+real[i]
+
++
+
+imaginary[i] *
+imaginary[i]
+
+);
+
+}
+
+return spectrum;
+
+}
+
+
+/* =========================================
+   VECTOR NORMALIZATION
+========================================= */
+
+function normalizeBushVector(
+vector
+){
+
+let sum = 0;
+
+for(
+let i=0;
+i<vector.length;
+i++
+){
+
+sum +=
+vector[i];
+
+}
+
+const mean =
+sum /
+vector.length;
+
+let variance = 0;
+
+for(
+let i=0;
+i<vector.length;
+i++
+){
+
+const difference =
+vector[i] -
+mean;
+
+variance +=
+
+difference *
+difference;
+
+}
+
+const standardDeviation =
+
+Math.sqrt(
+
+variance /
+vector.length
+
+)
+
+||
+
+1;
+
+for(
+let i=0;
+i<vector.length;
+i++
+){
+
+vector[i] =
+
+(
+vector[i] -
+mean
+)
+
+/
+
+standardDeviation;
+
+}
+
+}
+
+
+/* =========================================
+   DOWNSAMPLE FRAMES
+========================================= */
+
+function downsampleBushFrames(
+frames,
+maximumFrames
+){
+
+if(
+frames.length <=
+maximumFrames
+){
+
+return frames;
+
+}
+
+const result = [];
+
+const step =
+
+frames.length /
+
+maximumFrames;
+
+for(
+let i=0;
+i<maximumFrames;
+i++
+){
+
+result.push(
+
+frames[
+
+Math.floor(
+i * step
+)
+
+]
+
+);
+
+}
+
+return result;
+
+}
+
+
+/* =========================================
+   COSINE SIMILARITY
+========================================= */
+
+function cosineBushSimilarity(
+a,
+b
+){
+
+const length =
+Math.min(
+a.length,
+b.length
+);
+
+let dot = 0;
+
+let magnitudeA = 0;
+
+let magnitudeB = 0;
+
+for(
+let i=0;
+i<length;
+i++
+){
+
+dot +=
+a[i] *
+b[i];
+
+magnitudeA +=
+a[i] *
+a[i];
+
+magnitudeB +=
+b[i] *
+b[i];
+
+}
+
+if(
+magnitudeA === 0 ||
+magnitudeB === 0
+){
+
+return 0;
+
+}
+
+return dot /
+
+(
+Math.sqrt(
+magnitudeA
+)
+
+*
+
+Math.sqrt(
+magnitudeB
+)
+);
 
 }
 
@@ -3381,14 +4226,38 @@ text.innerHTML = html;
    SAFE HTML OUTPUT
 ========================================= */
 
-function escapeBushHtml(value){
+function escapeBushHtml(
+value
+){
 
-return String(value)
-.replaceAll("&","&amp;")
-.replaceAll("<","&lt;")
-.replaceAll(">","&gt;")
-.replaceAll('"',"&quot;")
-.replaceAll("'","&#039;");
+return String(
+value
+)
+
+.replaceAll(
+"&",
+"&amp;"
+)
+
+.replaceAll(
+"<",
+"&lt;"
+)
+
+.replaceAll(
+">",
+"&gt;"
+)
+
+.replaceAll(
+'"',
+"&quot;"
+)
+
+.replaceAll(
+"'",
+"&#039;"
+);
 
 }
 
