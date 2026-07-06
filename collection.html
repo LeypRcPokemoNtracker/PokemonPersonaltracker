@@ -2002,18 +2002,7 @@ in pokemon_cry_references.
 Change this list if your actual Top 10
 Pokémon are different.
 */
-const BUSH_TOP_10 = [
-"Lugia",
-"Ho-Oh",
-"Solgaleo",
-"Lunala",
-"Greninja",
-"Zeraora",
-"Eternatus",
-"Keldeo",
-"Grimmsnarl",
-"Zygarde"
-];
+
 
 const BUSH_CFG = {
 
@@ -2035,11 +2024,7 @@ noiseSeconds:0.45,
 
 maxFrames:220,
 
-/*
-If Top-10 result is weaker than this,
-search all remaining Pokémon.
-*/
-top10ExpandThreshold:0.62,
+
 
 /*
 If #1 and #2 are too close,
@@ -2165,38 +2150,17 @@ throw new Error(
 );
 
 }
-
 /* -----------------------------
-   4. Separate Top 10
+   4. Compare against all
+   available 6-star references
 ----------------------------- */
 
-const top10Refs =
-references.filter(
-ref =>
-isBushTop10(
-ref.pokemon_name
-)
-);
-
-const otherRefs =
-references.filter(
-ref =>
-!isBushTop10(
-ref.pokemon_name
-)
-);
-
-/*
-Top 10 are searched FIRST.
-
-There is NO fake score boost.
-*/
 let matches =
 await compareBushReferenceSet(
 recordedPack.features,
-top10Refs,
+references,
 text,
-"Top 10"
+"6-Star Pokémon"
 );
 
 let grouped =
@@ -2207,51 +2171,9 @@ matches
 (a,b)=>b.score-a.score
 );
 
-const bestTop10 =
-grouped[0]?.score || 0;
-
 /* -----------------------------
-   5. Expand when confidence weak
+   5. Show Top 5 matches
 ----------------------------- */
-
-if(
-bestTop10 <
-BUSH_CFG.top10ExpandThreshold
-){
-
-text.innerHTML = `
-<strong>
-🔍 Top-10 confidence is weak...
-</strong>
-
-<br><br>
-
-<span style="color:#94a3b8">
-Searching the full Pokémon library.
-</span>
-`;
-
-const moreMatches =
-await compareBushReferenceSet(
-recordedPack.features,
-otherRefs,
-text,
-"Full Library"
-);
-
-matches.push(
-...moreMatches
-);
-
-grouped =
-groupBushMatches(
-matches
-)
-.sort(
-(a,b)=>b.score-a.score
-);
-
-}
 
 const topMatches =
 grouped.slice(
@@ -2390,33 +2312,6 @@ error
 }
 
 return matches;
-
-}
-
-
-/* =========================================
-   TOP 10 CHECK
-========================================= */
-
-function isBushTop10(
-pokemonName
-){
-
-const normalized =
-String(
-pokemonName || ""
-)
-.trim()
-.toLowerCase();
-
-return BUSH_TOP_10.some(
-name =>
-name
-.trim()
-.toLowerCase()
-===
-normalized
-);
 
 }
 
@@ -3699,9 +3594,8 @@ line-height:1.5;
 color:#94a3b8;
 ">
 
-Top 10 Pokémon are checked first.
-If confidence is weak,
-the full reference library is searched.
+All available 6-star Pokémon cry references
+are compared directly.
 
 <br><br>
 
