@@ -17,36 +17,39 @@ const BUSH_FP_CFG = {
   fftSize: 2048,
   hopSize: 256,
 
-  // Focus on useful cry range and suppress low arcade rumble.
   minHz: 300,
   maxHz: 9000,
 
-  // Peak picking.
   freqNeighborhood: 4,
   timeNeighborhood: 3,
   maxPeaksPerFrame: 5,
   minPeakDbAboveFloor: 7.0,
 
-  // Landmark pairing.
   fanOut: 7,
   pairMinFrames: 2,
   pairMaxFrames: 48,
 
-  // Hash quantization. Coarser bins survive phone/arcade distortion better.
-  freqBinHz: 55,
-  deltaTimeBinFrames: 2,
+  /* Real-frequency quantization */
+  freqBinHz: 80,
 
-  // Recording cleanup.
+  /* Real-time quantization */
+  deltaTimeBinSeconds: 0.02,
+
   noiseSeconds: 0.45,
   maxRecordingSeconds: 8,
 
-  // Matching.
-  offsetBinFrames: 3,
-  minAlignedVotes: 4,
-  minUniqueHashes: 4,
-  topResults: 5,
+  /* Match alignment now uses seconds */
+  offsetBinSeconds: 0.02,
 
-  // Verification.
+  /* Stronger rejection of random arcade collisions */
+  minAlignedVotes: 8,
+  minUniqueHashes: 7,
+
+  /* Final result rejection */
+  minFinalScore: 0.38,
+  minWinnerGap: 0.06,
+
+  topResults: 5,
   verifyTopCandidates: 8
 };
 
@@ -187,10 +190,10 @@ async function getBushFingerprintIndex(textElement) {
             index.set(landmark.hash, postings);
           }
 
-          postings.push({
-            referenceId: ref.id,
-            referenceTime: landmark.anchorFrame
-          });
+         postings.push({
+  referenceId: ref.id,
+  referenceTime: landmark.anchorTime
+});
         }
       } catch (error) {
         console.warn("Reference skipped:", ref.storage_path || ref.audio_url, error);
@@ -268,8 +271,10 @@ function extractBushFingerprint(audioBuffer, isRecording) {
     : spectrogram;
 
   const peaks = pickBushConstellationPeaks(cleaned);
-  const landmarks = createBushLandmarks(peaks);
-
+const landmarks = createBushLandmarks(
+  peaks,
+  sampleRate
+);
   return {
     landmarks,
     peaks,
@@ -421,148 +426,382 @@ function pickBushConstellationPeaks(spec) {
   );
 }
 
-function createBushLandmarks(peaks) {
+function createBushLandmarks(peaks, sampleRate) {
+
   const landmarks = [];
 
   for (let i = 0; i < peaks.length; i++) {
+
     const anchor = peaks[i];
     let paired = 0;
 
     for (let j = i + 1; j < peaks.length; j++) {
+
       const target = peaks[j];
-      const dt = target.frame - anchor.frame;
 
-      if (dt < BUSH_FP_CFG.pairMinFrames) continue;
-      if (dt > BUSH_FP_CFG.pairMaxFrames) break;
+      const dtFrames =
+        target.frame - anchor.frame;
 
-      const hash = makeBushHash(
-        anchor.bin,
-        target.bin,
-        dt
-      );
+      if (
+        dtFrames <
+        BUSH_FP_CFG.pairMinFrames
+      ) {
+        continue;
+      }
+
+      if (
+        dtFrames >
+        BUSH_FP_CFG.pairMaxFrames
+      ) {
+        break;
+      }
+
+      /*
+        Convert FFT bin to actual Hz.
+
+        This fixes matching between:
+        - APK/reference audio
+        - Android microphone audio
+        - different sample rates
+      */
+
+      const anchorHz =
+        anchor.bin *
+        sampleRate /
+        BUSH_FP_CFG.fftSize;
+
+      const targetHz =
+        target.bin *
+        sampleRate /
+        BUSH_FP_CFG.fftSize;
+
+      /*
+        Convert frame difference
+        to actual elapsed seconds.
+      */
+
+      const deltaSeconds =
+        dtFrames *
+        BUSH_FP_CFG.hopSize /
+        sampleRate;
+
+      const hash =
+        makeBushHash(
+          anchorHz,
+          targetHz,
+          deltaSeconds
+        );
 
       landmarks.push({
         hash,
-        anchorFrame: anchor.frame
+
+        /*
+          Keep frame for compatibility
+        */
+        anchorFrame: anchor.frame,
+
+        /*
+          New real-time anchor
+        */
+        anchorTime:
+          anchor.frame *
+          BUSH_FP_CFG.hopSize /
+          sampleRate
       });
 
       paired++;
-      if (paired >= BUSH_FP_CFG.fanOut) break;
+
+      if (
+        paired >=
+        BUSH_FP_CFG.fanOut
+      ) {
+        break;
+      }
     }
   }
 
   return landmarks;
 }
 
-function makeBushHash(anchorBin, targetBin, deltaFrames) {
-  // Convert FFT bins to approximate Hz before robust quantization.
-  // Since references and recording can have different sample rates,
-  // actual Hz conversion happens approximately using normalized bins.
-  // Coarse bins deliberately tolerate phone/machine distortion.
-  const q1 = Math.round(anchorBin / 3);
-  const q2 = Math.round(targetBin / 3);
-  const qdt = Math.round(deltaFrames / BUSH_FP_CFG.deltaTimeBinFrames);
+function makeBushHash(
+  anchorHz,
+  targetHz,
+  deltaSeconds
+) {
+
+  const q1 =
+    Math.round(
+      anchorHz /
+      BUSH_FP_CFG.freqBinHz
+    );
+
+  const q2 =
+    Math.round(
+      targetHz /
+      BUSH_FP_CFG.freqBinHz
+    );
+
+  const qdt =
+    Math.round(
+      deltaSeconds /
+      BUSH_FP_CFG.deltaTimeBinSeconds
+    );
 
   return `${q1}|${q2}|${qdt}`;
 }
 
+
 /* ---------------- MATCHING ---------------- */
 
-function matchBushFingerprint(recordedLandmarks, index, references) {
-  const candidateOffsets = new Map();
-  const candidateUniqueHashes = new Map();
+function matchBushFingerprint(
+  recordedLandmarks,
+  index,
+  references
+) {
+
+  const candidateOffsets =
+    new Map();
+
+  /*
+    IMPORTANT FIX:
+
+    Unique hashes must be tracked
+    per reference AND per aligned offset.
+
+    The old engine counted hashes across
+    unrelated offsets, allowing weak
+    candidates such as Lugia to accumulate
+    false support.
+  */
+
+  const candidateUniqueHashes =
+    new Map();
 
   for (const live of recordedLandmarks) {
-    const postings = index.get(live.hash);
-    if (!postings) continue;
+
+    const postings =
+      index.get(live.hash);
+
+    if (!postings) {
+      continue;
+    }
 
     for (const posting of postings) {
-      const offset = posting.referenceTime - live.anchorFrame;
-      const offsetBin = Math.round(offset / BUSH_FP_CFG.offsetBinFrames);
-      const key = `${posting.referenceId}|${offsetBin}`;
+
+      /*
+        Compare real seconds,
+        not raw frame numbers.
+      */
+
+      const offset =
+        posting.referenceTime -
+        live.anchorTime;
+
+      const offsetBin =
+        Math.round(
+          offset /
+          BUSH_FP_CFG.offsetBinSeconds
+        );
+
+      const key =
+        `${posting.referenceId}|${offsetBin}`;
 
       candidateOffsets.set(
         key,
         (candidateOffsets.get(key) || 0) + 1
       );
 
-      let unique = candidateUniqueHashes.get(posting.referenceId);
+      let unique =
+        candidateUniqueHashes.get(key);
+
       if (!unique) {
+
         unique = new Set();
-        candidateUniqueHashes.set(posting.referenceId, unique);
+
+        candidateUniqueHashes.set(
+          key,
+          unique
+        );
       }
+
       unique.add(live.hash);
     }
   }
 
-  const bestByReference = new Map();
+  const bestByReference =
+    new Map();
 
-  for (const [key, votes] of candidateOffsets.entries()) {
-    const splitAt = key.indexOf("|");
-    const referenceId = Number(key.slice(0, splitAt));
-    const offsetBin = Number(key.slice(splitAt + 1));
+  for (
+    const [key, votes]
+    of candidateOffsets.entries()
+  ) {
 
-    const old = bestByReference.get(referenceId);
+    const splitAt =
+      key.indexOf("|");
 
-    if (!old || votes > old.alignedVotes) {
-      bestByReference.set(referenceId, {
+    const referenceId =
+      Number(
+        key.slice(0, splitAt)
+      );
+
+    const offsetBin =
+      Number(
+        key.slice(splitAt + 1)
+      );
+
+    const uniqueHashes =
+      candidateUniqueHashes
+        .get(key)?.size || 0;
+
+    const old =
+      bestByReference.get(
+        referenceId
+      );
+
+    if (
+      !old ||
+      votes > old.alignedVotes ||
+      (
+        votes === old.alignedVotes &&
+        uniqueHashes > old.uniqueHashes
+      )
+    ) {
+
+      bestByReference.set(
         referenceId,
-        alignedVotes: votes,
-        offsetBin
-      });
+        {
+          referenceId,
+          alignedVotes: votes,
+          offsetBin,
+          uniqueHashes
+        }
+      );
     }
   }
 
-  const refMap = new Map(references.map(r => [r.id, r]));
-  const totalLive = Math.max(1, recordedLandmarks.length);
+  const refMap =
+    new Map(
+      references.map(
+        r => [r.id, r]
+      )
+    );
 
-  return Array.from(bestByReference.values())
+  const totalLive =
+    Math.max(
+      1,
+      recordedLandmarks.length
+    );
+
+  return Array
+    .from(
+      bestByReference.values()
+    )
     .map(match => {
-      const ref = refMap.get(match.referenceId);
-      const uniqueHashes =
-        candidateUniqueHashes.get(match.referenceId)?.size || 0;
 
-      // Log-scaled score prevents large recordings from dominating.
-      const voteRatio = match.alignedVotes / totalLive;
-      const uniqueSupport = Math.min(1, uniqueHashes / 18);
+      const ref =
+        refMap.get(
+          match.referenceId
+        );
+
+      const voteRatio =
+        match.alignedVotes /
+        totalLive;
+
+      const uniqueSupport =
+        Math.min(
+          1,
+          match.uniqueHashes / 18
+        );
 
       const rawScore =
-        0.72 * Math.min(1, voteRatio * 7.5) +
-        0.28 * uniqueSupport;
+        0.72 *
+        Math.min(
+          1,
+          voteRatio * 7.5
+        )
+        +
+        0.28 *
+        uniqueSupport;
 
       return {
         ...match,
-        pokemon_name: ref?.pokemon_name || "Unknown",
-        uniqueHashes,
+
+        pokemon_name:
+          ref?.pokemon_name ||
+          "Unknown",
+
         score: rawScore
       };
     })
-    .filter(m =>
-      m.alignedVotes >= BUSH_FP_CFG.minAlignedVotes &&
-      m.uniqueHashes >= BUSH_FP_CFG.minUniqueHashes
+    .filter(match =>
+      match.alignedVotes >=
+        BUSH_FP_CFG.minAlignedVotes
+      &&
+      match.uniqueHashes >=
+        BUSH_FP_CFG.minUniqueHashes
     )
     .sort((a, b) =>
-      b.score - a.score ||
-      b.alignedVotes - a.alignedVotes
+      b.score - a.score
+      ||
+      b.alignedVotes -
+      a.alignedVotes
+      ||
+      b.uniqueHashes -
+      a.uniqueHashes
     );
 }
+function verifyBushCandidates(
+  matches,
+  recording,
+  referenceFingerprints
+) {
 
-function verifyBushCandidates(matches, recording, referenceFingerprints) {
   return matches
-    .slice(0, BUSH_FP_CFG.verifyTopCandidates)
+    .slice(
+      0,
+      BUSH_FP_CFG.verifyTopCandidates
+    )
     .map(match => {
-      const refFp = referenceFingerprints.get(match.referenceId);
 
-      if (!refFp) return match;
+      const refFp =
+        referenceFingerprints.get(
+          match.referenceId
+        );
+
+      if (!refFp) {
+        return match;
+      }
+
+      /*
+        Offset is now stored in
+        quantized seconds.
+      */
+
+      const offsetSeconds =
+        match.offsetBin *
+        BUSH_FP_CFG.offsetBinSeconds;
+
+      /*
+        Convert seconds into the
+        reference fingerprint frame scale
+        only for peak consistency.
+      */
 
       const offsetFrames =
-        match.offsetBin * BUSH_FP_CFG.offsetBinFrames;
+        Math.round(
+          offsetSeconds *
+          refFp.sampleRate /
+          refFp.hopSize
+        );
 
-      const consistency = calculateBushPeakConsistency(
-        recording.peaks,
-        refFp.peaks,
-        offsetFrames
-      );
+      const consistency =
+        calculateBushPeakConsistency(
+          recording.peaks,
+          refFp.peaks,
+          offsetFrames,
+          recording.sampleRate,
+          refFp.sampleRate
+        );
 
       const verifiedScore =
         0.78 * match.score +
@@ -571,42 +810,132 @@ function verifyBushCandidates(matches, recording, referenceFingerprints) {
       return {
         ...match,
         consistency,
-        score: Math.max(0, Math.min(1, verifiedScore))
+
+        score:
+          Math.max(
+            0,
+            Math.min(
+              1,
+              verifiedScore
+            )
+          )
       };
     })
     .sort((a, b) =>
-      b.score - a.score ||
-      b.alignedVotes - a.alignedVotes
+      b.score - a.score
+      ||
+      b.alignedVotes -
+      a.alignedVotes
     );
 }
 
-function calculateBushPeakConsistency(livePeaks, refPeaks, offsetFrames) {
-  if (!livePeaks.length || !refPeaks.length) return 0;
+function calculateBushPeakConsistency(
+  livePeaks,
+  refPeaks,
+  offsetFrames,
+  liveSampleRate,
+  refSampleRate
+) {
 
-  const refByFrame = new Map();
+  if (
+    !livePeaks.length ||
+    !refPeaks.length
+  ) {
+    return 0;
+  }
+
+  const refByFrame =
+    new Map();
 
   for (const p of refPeaks) {
-    let list = refByFrame.get(p.frame);
+
+    let list =
+      refByFrame.get(p.frame);
+
     if (!list) {
+
       list = [];
-      refByFrame.set(p.frame, list);
+
+      refByFrame.set(
+        p.frame,
+        list
+      );
     }
-    list.push(p.bin);
+
+    /*
+      Store real Hz,
+      not raw FFT bin.
+    */
+
+    list.push(
+      p.bin *
+      refSampleRate /
+      BUSH_FP_CFG.fftSize
+    );
   }
 
   let checked = 0;
   let matched = 0;
 
   for (const live of livePeaks) {
-    const expectedFrame = live.frame + offsetFrames;
+
+    /*
+      Convert live frame to seconds,
+      then into reference frame scale.
+    */
+
+    const liveTime =
+      live.frame *
+      BUSH_FP_CFG.hopSize /
+      liveSampleRate;
+
+    const expectedFrame =
+      Math.round(
+        liveTime *
+        refSampleRate /
+        BUSH_FP_CFG.hopSize
+      )
+      +
+      offsetFrames;
+
+    const liveHz =
+      live.bin *
+      liveSampleRate /
+      BUSH_FP_CFG.fftSize;
+
     let found = false;
 
-    for (let dt = -2; dt <= 2 && !found; dt++) {
-      const bins = refByFrame.get(expectedFrame + dt);
-      if (!bins) continue;
+    for (
+      let dt = -2;
+      dt <= 2 && !found;
+      dt++
+    ) {
 
-      for (const refBin of bins) {
-        if (Math.abs(refBin - live.bin) <= 5) {
+      const frequencies =
+        refByFrame.get(
+          expectedFrame + dt
+        );
+
+      if (!frequencies) {
+        continue;
+      }
+
+      for (
+        const refHz
+        of frequencies
+      ) {
+
+        /*
+          Allow modest frequency drift
+          from speaker + microphone.
+        */
+
+        if (
+          Math.abs(
+            refHz - liveHz
+          ) <= 140
+        ) {
+
           found = true;
           break;
         }
@@ -614,10 +943,15 @@ function calculateBushPeakConsistency(livePeaks, refPeaks, offsetFrames) {
     }
 
     checked++;
-    if (found) matched++;
+
+    if (found) {
+      matched++;
+    }
   }
 
-  return checked ? matched / checked : 0;
+  return checked
+    ? matched / checked
+    : 0;
 }
 
 /* ---------------- RESULTS ---------------- */
@@ -641,11 +975,79 @@ function showBushFingerprintResults(matches) {
   const second = matches[1];
 
   const gap = second ? first.score - second.score : first.score;
+/*
+  HARD REJECTION:
 
-  const uncertain =
-    first.alignedVotes < 7 ||
-    first.uniqueHashes < 6 ||
-    (second && gap < 0.055);
+  Do not present the top Pokémon
+  when evidence is weak.
+*/
+
+if (
+  first.score <
+    BUSH_FP_CFG.minFinalScore
+  ||
+  first.alignedVotes <
+    BUSH_FP_CFG.minAlignedVotes
+  ||
+  first.uniqueHashes <
+    BUSH_FP_CFG.minUniqueHashes
+  ||
+  (
+    second &&
+    gap <
+      BUSH_FP_CFG.minWinnerGap
+  )
+) {
+
+  const percent =
+    Math.round(
+      first.score * 100
+    );
+
+  text.innerHTML = `
+    <div style="
+      padding:14px;
+      border-radius:10px;
+      background:#451a03;
+      border:1px solid #f59e0b;
+    ">
+
+      <strong>
+        ⚠️ No reliable match
+      </strong>
+
+      <br><br>
+
+      <span style="
+        color:#cbd5e1;
+      ">
+        Strongest candidate:
+        ${escapeBushHtmlV3(
+          first.pokemon_name
+        )}
+        (${percent}% similarity)
+      </span>
+
+      <br><br>
+
+      <span style="
+        color:#94a3b8;
+        font-size:12px;
+      ">
+        The fingerprint evidence was
+        too weak or too close to another
+        candidate. Record again closer
+        to the machine speaker.
+      </span>
+
+    </div>
+  `;
+
+  return;
+}
+ const uncertain =
+  first.score < 0.50 ||
+  (second && gap < 0.10);
 
   let html = `
     <div style="
