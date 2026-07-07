@@ -600,39 +600,18 @@ function matchBushFingerprint(
   references
 ) {
 
-  const candidateOffsets =
-    new Map();
-
-  /*
-    IMPORTANT FIX:
-
-    Unique hashes must be tracked
-    per reference AND per aligned offset.
-
-    The old engine counted hashes across
-    unrelated offsets, allowing weak
-    candidates such as Lugia to accumulate
-    false support.
-  */
-
-  const candidateUniqueHashes =
-    new Map();
+  const candidateOffsets = new Map();
+  const candidateUniqueHashes = new Map();
 
   for (const live of recordedLandmarks) {
 
-    const postings =
-      index.get(live.hash);
+    const postings = index.get(live.hash);
 
     if (!postings) {
       continue;
     }
 
     for (const posting of postings) {
-
-      /*
-        Compare real seconds,
-        not raw frame numbers.
-      */
 
       const offset =
         posting.referenceTime -
@@ -656,9 +635,7 @@ function matchBushFingerprint(
         candidateUniqueHashes.get(key);
 
       if (!unique) {
-
         unique = new Set();
-
         candidateUniqueHashes.set(
           key,
           unique
@@ -669,8 +646,32 @@ function matchBushFingerprint(
     }
   }
 
-  const bestByReference =
-    new Map();
+  /*
+    Create a candidate for EVERY reference.
+
+    This is important for your 10-Pokémon setup.
+    Even if a Pokémon has weak evidence,
+    it can still appear in Top 3 possibilities.
+  */
+
+  const bestByReference = new Map();
+
+  for (const ref of references) {
+    bestByReference.set(
+      ref.id,
+      {
+        referenceId: ref.id,
+        alignedVotes: 0,
+        offsetBin: 0,
+        uniqueHashes: 0
+      }
+    );
+  }
+
+  /*
+    Replace default candidate data
+    with strongest aligned offset.
+  */
 
   for (
     const [key, votes]
@@ -695,9 +696,7 @@ function matchBushFingerprint(
         .get(key)?.size || 0;
 
     const old =
-      bestByReference.get(
-        referenceId
-      );
+      bestByReference.get(referenceId);
 
     if (
       !old ||
@@ -734,9 +733,7 @@ function matchBushFingerprint(
     );
 
   return Array
-    .from(
-      bestByReference.values()
-    )
+    .from(bestByReference.values())
     .map(match => {
 
       const ref =
@@ -774,13 +771,13 @@ function matchBushFingerprint(
         score: rawScore
       };
     })
-    .filter(match =>
-      match.alignedVotes >=
-        BUSH_FP_CFG.minAlignedVotes
-      &&
-      match.uniqueHashes >=
-        BUSH_FP_CFG.minUniqueHashes
-    )
+
+    /*
+      IMPORTANT:
+      Do not filter candidates here.
+      Reliability is decided later.
+    */
+
     .sort((a, b) =>
       b.score - a.score
       ||
