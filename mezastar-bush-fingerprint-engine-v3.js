@@ -138,22 +138,63 @@ async function analyzeBushSound() {
 /* ---------------- REFERENCE INDEX ---------------- */
 
 async function loadBushFingerprintReferences() {
-  if (bushFingerprintReferenceCache) return bushFingerprintReferenceCache;
+  if (bushFingerprintReferenceCache) {
+    return bushFingerprintReferenceCache;
+  }
 
-  const { data, error } = await db
+  // Get only 6-star Pokémon
+  const {
+    data: sixStarPokemon,
+    error: pokemonError
+  } = await db
+    .from("pokemon_master")
+    .select("pokemon_name")
+    .eq("rarity", 6);
+
+  if (pokemonError) {
+    throw pokemonError;
+  }
+
+  const allowedNames = new Set(
+    (sixStarPokemon || [])
+      .map(x =>
+        String(x.pokemon_name || "")
+          .trim()
+          .toLowerCase()
+      )
+  );
+
+  // Load available cry references
+  const {
+    data: references,
+    error: referenceError
+  } = await db
     .from("pokemon_cry_references")
     .select("id,pokemon_name,audio_url,storage_path,verified")
+    .not("audio_url", "is", null)
     .order("id");
 
-  if (error) throw error;
+  if (referenceError) {
+    throw referenceError;
+  }
 
-  bushFingerprintReferenceCache = (data || []).filter(
-    x => x.audio_url
+  bushFingerprintReferenceCache =
+    (references || []).filter(ref =>
+      allowedNames.has(
+        String(ref.pokemon_name || "")
+          .trim()
+          .toLowerCase()
+      )
+    );
+
+  console.log(
+    "6-star bush references:",
+    bushFingerprintReferenceCache.length,
+    bushFingerprintReferenceCache.map(x => x.pokemon_name)
   );
 
   return bushFingerprintReferenceCache;
 }
-
 async function getBushFingerprintIndex(textElement) {
   if (bushFingerprintIndexCache) return bushFingerprintIndexCache;
   if (bushFingerprintBuildPromise) return bushFingerprintBuildPromise;
@@ -957,167 +998,183 @@ function calculateBushPeakConsistency(
 /* ---------------- RESULTS ---------------- */
 
 function showBushFingerprintResults(matches) {
-  const text = document.getElementById("bushResultText");
+
+  const text =
+    document.getElementById("bushResultText");
 
   if (!matches.length) {
+
     text.innerHTML = `
-      <strong>No reliable fingerprint match found.</strong>
+      <strong>
+        No fingerprint candidates found.
+      </strong>
+
       <br><br>
+
       <span style="color:#94a3b8">
-        Try again with the phone closer to the Mezastar speaker.
-        Start recording just before the bush cry begins.
+        Try again with the phone closer
+        to the Mezastar speaker.
       </span>
     `;
+
     return;
   }
 
-  const first = matches[0];
-  const second = matches[1];
+  // Always keep top 3 possibilities
+  const topMatches =
+    matches.slice(0, 3);
 
-  const gap = second ? first.score - second.score : first.score;
-/*
-  HARD REJECTION:
+  const first =
+    topMatches[0];
 
-  Do not present the top Pokémon
-  when evidence is weak.
-*/
+  const second =
+    topMatches[1];
 
-if (
-  first.score <
-    BUSH_FP_CFG.minFinalScore
-  ||
-  first.alignedVotes <
-    BUSH_FP_CFG.minAlignedVotes
-  ||
-  first.uniqueHashes <
-    BUSH_FP_CFG.minUniqueHashes
-  ||
-  (
-    second &&
-    gap <
-      BUSH_FP_CFG.minWinnerGap
-  )
-) {
+  const gap =
+    second
+      ? first.score - second.score
+      : first.score;
 
-  const percent =
-    Math.round(
-      first.score * 100
+  const reliable =
+    first.score >=
+      BUSH_FP_CFG.minFinalScore
+    &&
+    first.alignedVotes >=
+      BUSH_FP_CFG.minAlignedVotes
+    &&
+    first.uniqueHashes >=
+      BUSH_FP_CFG.minUniqueHashes
+    &&
+    (
+      !second ||
+      gap >=
+        BUSH_FP_CFG.minWinnerGap
     );
 
-  text.innerHTML = `
+  let html = `
     <div style="
-      padding:14px;
+      margin-bottom:14px;
+      padding:12px;
       border-radius:10px;
-      background:#451a03;
-      border:1px solid #f59e0b;
+      background:${
+        reliable
+          ? "#052e16"
+          : "#451a03"
+      };
+      border:1px solid ${
+        reliable
+          ? "#22c55e"
+          : "#f59e0b"
+      };
     ">
 
       <strong>
-        ⚠️ No reliable match
+        ${
+          reliable
+            ? "✅ Likely Match"
+            : "⚠️ Uncertain — Top 3 Possibilities"
+        }
       </strong>
 
       <br><br>
 
       <span style="
         color:#cbd5e1;
-      ">
-        Strongest candidate:
-        ${escapeBushHtmlV3(
-          first.pokemon_name
-        )}
-        (${percent}% similarity)
-      </span>
-
-      <br><br>
-
-      <span style="
-        color:#94a3b8;
         font-size:12px;
       ">
-        The fingerprint evidence was
-        too weak or too close to another
-        candidate. Record again closer
-        to the machine speaker.
-      </span>
-
-    </div>
-  `;
-
-  return;
-}
- const uncertain =
-  first.score < 0.50 ||
-  (second && gap < 0.10);
-
-  let html = `
-    <div style="
-      margin-bottom:14px;
-      padding:10px 12px;
-      border-radius:10px;
-      background:${uncertain ? "#451a03" : "#052e16"};
-      border:1px solid ${uncertain ? "#f59e0b" : "#22c55e"};
-    ">
-      <strong>${uncertain ? "⚠️ Uncertain Match" : "✅ Likely Match"}</strong>
-      <br>
-      <span style="font-size:12px;color:#cbd5e1">
         ${
-          uncertain
-            ? "Fingerprint support is weak or the top results are close. Try another recording."
-            : "Stable time-aligned sound landmarks support the top result."
+          reliable
+            ? "The first result has the strongest fingerprint support."
+            : "The recording was not strong enough for one confident answer, so the three closest candidates are shown."
         }
       </span>
+
     </div>
   `;
 
-  matches.forEach((match, index) => {
-    const percent = Math.round(match.score * 100);
+  topMatches.forEach(
+    (match, index) => {
 
-    html += `
-      <div style="padding:12px 0;border-bottom:1px solid #334155">
+      const percent =
+        Math.round(
+          match.score * 100
+        );
+
+      html += `
         <div style="
-          display:flex;
-          justify-content:space-between;
-          gap:15px;
-          align-items:center;
+          padding:14px 0;
+          border-bottom:
+            1px solid #334155;
         ">
-          <strong>
-            ${index + 1}. ${escapeBushHtmlV3(match.pokemon_name)}
-          </strong>
 
-          <span style="
-            font-size:18px;
-            font-weight:bold;
-            color:${index === 0 ? "#facc15" : "#cbd5e1"};
-          ">
-            ${percent}%
-          </span>
-        </div>
-
-        <div style="
-          height:7px;
-          background:#334155;
-          border-radius:999px;
-          margin-top:8px;
-          overflow:hidden;
-        ">
           <div style="
-            height:100%;
-            width:${percent}%;
-            background:linear-gradient(90deg,#7c3aed,#db2777);
-          "></div>
-        </div>
+            display:flex;
+            justify-content:space-between;
+            gap:15px;
+            align-items:center;
+          ">
 
-        <div style="
-          margin-top:6px;
-          font-size:11px;
-          color:#64748b;
-        ">
-          ${match.alignedVotes} aligned votes ·
-          ${match.uniqueHashes} unique hashes
+            <strong>
+              ${index + 1}.
+              ${escapeBushHtmlV3(
+                match.pokemon_name
+              )}
+            </strong>
+
+            <span style="
+              font-size:18px;
+              font-weight:bold;
+              color:${
+                index === 0
+                  ? "#facc15"
+                  : "#cbd5e1"
+              };
+            ">
+              ${percent}%
+            </span>
+
+          </div>
+
+          <div style="
+            height:7px;
+            background:#334155;
+            border-radius:999px;
+            margin-top:8px;
+            overflow:hidden;
+          ">
+
+            <div style="
+              height:100%;
+              width:${percent}%;
+              background:
+                linear-gradient(
+                  90deg,
+                  #7c3aed,
+                  #db2777
+                );
+            ">
+            </div>
+
+          </div>
+
+          <div style="
+            margin-top:6px;
+            font-size:11px;
+            color:#64748b;
+          ">
+
+            ${match.alignedVotes}
+            aligned votes ·
+
+            ${match.uniqueHashes}
+            unique hashes
+
+          </div>
+
         </div>
-      </div>
-    `;
-  });
+      `;
+    }
+  );
 
   html += `
     <div style="
@@ -1126,9 +1183,9 @@ if (
       line-height:1.5;
       color:#94a3b8;
     ">
-      This matcher uses noise-suppressed spectral landmarks,
-      fingerprint hashes, time-offset voting, and candidate verification.
-      Scores are similarity indicators, not probabilities.
+      Results show the three closest
+      fingerprint candidates.
+      Similarity scores are not probabilities.
     </div>
   `;
 
