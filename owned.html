@@ -877,7 +877,25 @@ ${m.move_name} ${getTypeEmoji(m.move_type)}
 ⚙️ Manage Moves
 </option>
             </select>
+<label>
 
+Special Move
+
+</label>
+
+<select
+class="moveSelect"
+disabled>
+
+<option>
+
+${
+moves.find(m=>m.id==moveId)?.special_move || "None"
+}
+
+</option>
+
+</select>
             <label>
 
                 Notes
