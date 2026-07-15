@@ -606,8 +606,7 @@ move_id,
 mezastar_moves(
 id,
 move_name,
-move_type,
-special_move
+move_type
 )
 )
 `)
@@ -1225,8 +1224,7 @@ document.getElementById("newMoveName").value.trim();
 
 const type =
 document.getElementById("newMoveType").value;
-const specialMove =
-document.getElementById("newSpecialMove").value;
+
 if(name===""){
 
 alert("Enter a move name.");
@@ -1260,7 +1258,6 @@ move_name:name,
 
 move_type:type,
 
-special_move:specialMove
 
 
 })
@@ -1305,7 +1302,7 @@ move_name:name,
 
 move_type:type,
 
-special_move:specialMove  
+
 })
 
 .select()
@@ -1558,39 +1555,7 @@ margin-bottom:20px;
 <option value="Fighting">👊 Fighting</option>
 
 </select>
-<label>Special Move</label>
 
-<select
-id="newSpecialMove"
-style="
-width:100%;
-padding:12px;
-margin-bottom:20px;
-">
-
-<option value="">None</option>
-
-<option value="Mega Evolution">
-🧬 Mega Evolution
-</option>
-
-<option value="Gigantamax">
-☁️ Gigantamax
-</option>
-
-<option value="Dynamax">
-🔴 Dynamax
-</option>
-
-<option value="Z-Move">
-💎 Z-Move
-</option>
-
-<option value="Terastal">
-💎 Terastal
-</option>
-
-</select>
 <div
 style="
 display:flex;
