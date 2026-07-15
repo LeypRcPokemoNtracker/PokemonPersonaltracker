@@ -603,6 +603,7 @@ version,
 rarity,
 image_url,
 move_id,
+special_move,
 mezastar_moves(
 id,
 move_name,
@@ -884,14 +885,37 @@ Special Move
 
 <select
 class="moveSelect"
-disabled>
+id="special-${p.id}"
+onchange="saveConfig(${p.id})">
 
-<option>
+<option value=""
+${!p.special_move ? "selected" : ""}>
+None
+</option>
 
-${
-moves.find(m=>m.id==moveId)?.special_move || "None"
-}
+<option value="Mega Evolution"
+${p.special_move=="Mega Evolution"?"selected":""}>
+🧬 Mega Evolution
+</option>
 
+<option value="Gigantamax"
+${p.special_move=="Gigantamax"?"selected":""}>
+☁️ Gigantamax
+</option>
+
+<option value="Dynamax"
+${p.special_move=="Dynamax"?"selected":""}>
+🔴 Dynamax
+</option>
+
+<option value="Z-Move"
+${p.special_move=="Z-Move"?"selected":""}>
+💎 Z-Move
+</option>
+
+<option value="Terastal"
+${p.special_move=="Terastal"?"selected":""}>
+💎 Terastal
 </option>
 
 </select>
@@ -934,7 +958,8 @@ async function moveChanged(pokemonId){
 
 const value =
 document.getElementById(`move-${pokemonId}`).value;
-
+const specialMove =
+document.getElementById(`special-${pokemonId}`).value;
 if(value==="new"){
 
 openMoveModal(pokemonId);
@@ -1383,7 +1408,9 @@ async function saveConfig(pokemonId){
 
 .update({
 
-move_id: move ? Number(move) : null
+move_id: move ? Number(move) : null,
+
+special_move: specialMove || null
 
 })
 
