@@ -761,9 +761,6 @@ let editPokemonId=null;
 
 window.addEventListener("load",()=>{
 
-document
-.getElementById("addImageFile")
-.addEventListener("change",autoFillPokemon);
 
 const allBtn =
 document.querySelector(".version-btn.active");
@@ -1263,26 +1260,7 @@ function closeImageViewer(){
 document.getElementById("imageViewer").style.display = "none";
 
 }
-  async function autoFillPokemon(e){
 
-const file=e.target.files[0];
-
-if(!file) return;
-
-const filename=file.name.replace(/\.[^/.]+$/,"");
-
-const parts=filename.split("_");
-
-if(parts.length>=2){
-
-document.getElementById("addTagCode").value=parts[0];
-
-document.getElementById("addPokemonName").value=
-parts.slice(1).join(" ");
-
-}
-
-}
 async function savePokemon(){
 
 const version =
