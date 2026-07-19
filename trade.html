@@ -623,13 +623,13 @@ async function loadPokemon(){
 const { data, error } = await db
         .from("pokemon_master")
 
-        .select(`
-            id,
-            pokemon_name,
-            rarity,
-            tag_code
-        `)
-
+    .select(`
+    id,
+    pokemon_name,
+    rarity,
+    tag_code,
+    version_name
+`)
         .order("pokemon_name");
 
     if(error){
@@ -642,27 +642,65 @@ const { data, error } = await db
 
     pokemonList = data;
 
-    const select =
-        document.getElementById("pokemonSelect");
+   const select =
+    document.getElementById("pokemonSelect");
 
-    select.innerHTML =
-        `<option value="">Select Pokémon...</option>`;
+select.innerHTML =
+`<option value="">Select Pokémon...</option>`;
 
-    data.forEach(pokemon=>{
+const grouped = {};
+
+data.forEach(pokemon=>{
+
+    const version =
+        pokemon.version_name || "Other";
+
+    if(!grouped[version]){
+
+        grouped[version] = [];
+
+    }
+
+    grouped[version].push(pokemon);
+
+});
+
+Object.keys(grouped)
+.sort((a,b)=>{
+
+    const na = parseInt(a.replace(/\D/g,"")) || 0;
+    const nb = parseInt(b.replace(/\D/g,"")) || 0;
+
+    return nb - na;
+
+})
+.forEach(version=>{
+
+    const optgroup =
+        document.createElement("optgroup");
+
+    optgroup.label = version;
+
+    grouped[version].forEach(pokemon=>{
 
         const stars =
             "★".repeat(pokemon.rarity || 0);
 
-        select.innerHTML += `
-            <option value="${pokemon.id}">
-                ${pokemon.tag_code}
-                •
-                ${pokemon.pokemon_name}
-                ${stars}
-            </option>
-        `;
+        const option =
+            document.createElement("option");
+
+        option.value = pokemon.id;
+
+        option.textContent =
+            `${pokemon.tag_code} • ${pokemon.pokemon_name} ${stars}`;
+
+        optgroup.appendChild(option);
 
     });
+
+    select.appendChild(optgroup);
+
+});
 
 }
 
@@ -959,11 +997,13 @@ function renderHistory(){
 
     }
 
-    clearTradeForm();
+await updateCollection(trade);
 
-    await loadTradeHistory();
+clearTradeForm();
 
-    updateSummary();
+await loadTradeHistory();
+
+updateSummary();
 
          
 }
@@ -1049,6 +1089,97 @@ async function editTrade(id){
     updateSummary();
 
 }
+
+      async function updateCollection(trade){
+
+    const enabled =
+        document.getElementById("updateCollection").checked;
+
+    if(!enabled){
+
+        return;
+
+    }
+
+    const { data: existing, error } = await db
+
+        .from("user_collection")
+
+        .select("*")
+
+        .eq("user_id", userId)
+
+        .eq("pokemon_id", trade.pokemon_id)
+
+        .maybeSingle();
+
+    if(error){
+
+        console.error(error);
+
+        return;
+
+    }
+
+    if(existing){
+
+        let qty = existing.quantity || 0;
+
+        if(trade.trade_type==="received"){
+
+            qty += trade.quantity;
+
+        }else{
+
+            qty -= trade.quantity;
+
+            if(qty < 0){
+
+                qty = 0;
+
+            }
+
+        }
+
+        await db
+
+            .from("user_collection")
+
+            .update({
+
+                quantity: qty,
+
+                owned: qty > 0
+
+            })
+
+            .eq("id", existing.id);
+
+    }else{
+
+        if(trade.trade_type==="received"){
+
+            await db
+
+                .from("user_collection")
+
+                .insert({
+
+                    user_id: userId,
+
+                    pokemon_id: trade.pokemon_id,
+
+                    quantity: trade.quantity,
+
+                    owned: true
+
+                });
+
+        }
+
+    }
+
+}  
 
 </script>
 
