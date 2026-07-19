@@ -630,7 +630,8 @@ const { data, error } = await db
     tag_code,
     version_name
 `)
-        .order("pokemon_name");
+      .order("version_name")
+.order("tag_code");
 
     if(error){
 
@@ -679,8 +680,8 @@ Object.keys(grouped)
     const optgroup =
         document.createElement("optgroup");
 
-    optgroup.label = version;
-
+optgroup.label =
+    `${version} (${grouped[version].length})`;
     grouped[version].forEach(pokemon=>{
 
         const stars =
