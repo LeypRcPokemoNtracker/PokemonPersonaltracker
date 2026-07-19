@@ -191,6 +191,867 @@ textarea{
 
 /* CSS continues in Part 2... */
 
+.historyToolbar{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+.historyToolbar input{
+    flex:1;
+    min-width:250px;
+}
+
+.historyToolbar select{
+    width:200px;
+}
+
+#historyCards{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:18px;
+}
+
+.tradeCard{
+    background:#22395f;
+    border-radius:12px;
+    padding:18px;
+    border-left:6px solid #1976d2;
+    transition:.25s;
+}
+
+.tradeCard.traded{
+    border-left-color:#ef5350;
+}
+
+.tradeCard.received{
+    border-left-color:#43a047;
+}
+
+.tradeCard:hover{
+    transform:translateY(-4px);
+}
+
+.tradeCard h3{
+    margin-bottom:12px;
+    color:#ffd54f;
+}
+
+.tradeCard .row{
+    margin:6px 0;
+    color:#d7e3f4;
+}
+
+.tradeActions{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+}
+
+.tradeActions button{
+    flex:1;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.editBtn{
+    background:#1976d2;
+    color:white;
+}
+
+.deleteBtn{
+    background:#d32f2f;
+    color:white;
+}
+
+.empty{
+    text-align:center;
+    padding:50px;
+    color:#b8c5d6;
+    font-size:18px;
+}
+
+@media(max-width:768px){
+
+header{
+    flex-direction:column;
+    align-items:flex-start;
+}
+
+header div{
+    width:100%;
+}
+
+header button{
+    flex:1;
+}
+
+.historyToolbar{
+    flex-direction:column;
+}
+
+.historyToolbar select{
+    width:100%;
+}
+
+}
+
 </style>
 
 </head>
+    <body>
+
+<header>
+
+    <h2>🔄 Trade Center</h2>
+
+    <div>
+
+        <button onclick="location.href='dashboard.html'">
+            🏠 Home
+        </button>
+
+        <button onclick="location.href='collection.html'">
+            📖 Collection
+        </button>
+
+        <button onclick="location.href='owned.html'">
+            🎒 My Tags
+        </button>
+
+        <button onclick="location.href='battle.html'">
+            ⚔ Battle Helper
+        </button>
+
+    </div>
+
+</header>
+
+<div class="container">
+
+    <!-- ===================================== -->
+    <!-- SUMMARY -->
+    <!-- ===================================== -->
+
+    <div class="summary">
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Total Trades
+            </div>
+
+            <div class="summaryValue" id="totalTrades">
+                0
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Pokémon Traded
+            </div>
+
+            <div class="summaryValue summaryMissing" id="totalTraded">
+                0
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Pokémon Received
+            </div>
+
+            <div class="summaryValue summaryAssigned" id="totalReceived">
+                0
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Trade Partners
+            </div>
+
+            <div class="summaryValue summaryPercent" id="totalPartners">
+                0
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ===================================== -->
+    <!-- NEW TRADE -->
+    <!-- ===================================== -->
+
+    <div class="tradeForm">
+
+        <h2>➕ New Trade</h2>
+
+        <div class="formGrid">
+
+            <div>
+
+                <label>Trade Type</label>
+
+                <select id="tradeType">
+
+                    <option value="traded">📤 Traded</option>
+
+                    <option value="received">📥 Received</option>
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label>Pokémon</label>
+
+                <select id="pokemonSelect">
+
+                    <option value="">Loading Pokémon...</option>
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label>Quantity</label>
+
+                <input
+                    id="quantity"
+                    type="number"
+                    value="1"
+                    min="1">
+
+            </div>
+
+            <div>
+
+                <label>Person</label>
+
+                <input
+                    id="person"
+                    type="text"
+                    placeholder="Trader name">
+
+            </div>
+
+            <div>
+
+                <label>Received In Return</label>
+
+                <input
+                    id="receivedItem"
+                    type="text"
+                    placeholder="Rayquaza / ₱500 / Gift">
+
+            </div>
+
+            <div>
+
+                <label>Trade Date</label>
+
+                <input
+                    id="tradeDate"
+                    type="date">
+
+            </div>
+
+        </div>
+
+        <input
+            type="hidden"
+            id="editingTradeId">
+
+        <label style="margin-top:20px;">
+            Notes
+        </label>
+
+        <textarea
+            id="notes"
+            rows="4"
+            placeholder="Optional notes..."></textarea>
+
+        <div class="checkboxRow">
+
+            <input
+                type="checkbox"
+                id="updateCollection"
+                checked>
+
+            <label for="updateCollection">
+
+                Automatically update my collection
+
+            </label>
+
+        </div>
+
+        <div class="buttonRow">
+
+            <button onclick="saveTrade()">
+
+                💾 Save Trade
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- ===================================== -->
+    <!-- TRADE HISTORY -->
+    <!-- ===================================== -->
+
+    <div class="tradeHistory">
+
+        <h2>📜 Trade History</h2>
+
+        <div class="historyToolbar">
+
+            <input
+                id="historySearch"
+                type="text"
+                placeholder="🔍 Search...">
+
+            <select id="historyFilter">
+
+                <option value="all">
+                    All Trades
+                </option>
+
+                <option value="traded">
+                    📤 Traded
+                </option>
+
+                <option value="received">
+                    📥 Received
+                </option>
+
+            </select>
+
+            <select id="historySort">
+
+                <option value="newest">
+                    Newest First
+                </option>
+
+                <option value="oldest">
+                    Oldest First
+                </option>
+
+            </select>
+
+        </div>
+
+        <div id="historyCards">
+
+            <div class="empty">
+
+                📦 No trades yet.
+
+            </div>
+
+        </div>
+    </div> <!-- tradeHistory -->
+
+</div> <!-- container -->
+    <script>
+
+const db = supabase.createClient(
+
+'https://dzbpzlkpjbascrjozcih.supabase.co',
+
+'sb_publishable_AXT6yLPWDsSJ43uf14KMIQ_tlEoOt4r'
+
+);
+
+const userId = Number(localStorage.getItem("user_id"));
+
+if(!userId){
+
+    location.href = "index.html";
+
+}
+
+let pokemonList = [];
+let tradeHistory = [];
+init();
+
+async function init(){
+
+    document.getElementById("tradeDate").value =
+        new Date().toISOString().split("T")[0];
+
+    await Promise.all([
+
+        loadPokemon(),
+
+        loadTradeHistory()
+
+    ]);
+
+    updateSummary();
+       document
+.getElementById("historySearch")
+.addEventListener("input",renderHistory);
+
+document
+.getElementById("historyFilter")
+.addEventListener("change",renderHistory);
+
+document
+.getElementById("historySort")
+.addEventListener("change",renderHistory);
+
+
+}
+async function loadPokemon(){
+
+const { data, error } = await db
+        .from("pokemon_master")
+
+        .select(`
+            id,
+            pokemon_name,
+            rarity,
+            tag_code
+        `)
+
+        .order("pokemon_name");
+
+    if(error){
+
+        console.error(error);
+
+        return;
+
+    }
+
+    pokemonList = data;
+
+    const select =
+        document.getElementById("pokemonSelect");
+
+    select.innerHTML =
+        `<option value="">Select Pokémon...</option>`;
+
+    data.forEach(pokemon=>{
+
+        const stars =
+            "★".repeat(pokemon.rarity || 0);
+
+        select.innerHTML += `
+            <option value="${pokemon.id}">
+                ${pokemon.tag_code}
+                •
+                ${pokemon.pokemon_name}
+                ${stars}
+            </option>
+        `;
+
+    });
+
+}
+
+async function loadTradeHistory(){
+
+const { data, error } = await db
+        .from("trade_history")
+
+        .select("*")
+
+        .eq("user_id", userId)
+
+        .order("trade_date",{ascending:false});
+
+    if(error){
+
+        console.error(error);
+
+        return;
+
+    }
+
+    tradeHistory = data;
+
+    renderHistory();
+
+}
+
+function updateSummary(){
+
+    document.getElementById("totalTrades").textContent =
+        tradeHistory.length;
+
+    document.getElementById("totalTraded").textContent =
+        tradeHistory.filter(x=>x.trade_type==="traded").length;
+
+    document.getElementById("totalReceived").textContent =
+        tradeHistory.filter(x=>x.trade_type==="received").length;
+
+    const partners =
+        [...new Set(
+            tradeHistory.map(x=>x.person_name)
+        )];
+
+    document.getElementById("totalPartners").textContent =
+        partners.length;
+
+}
+
+function renderHistory(){
+
+    const history =
+        document.getElementById("historyCards");
+
+    if(!tradeHistory.length){
+
+        history.innerHTML = `
+        <div class="empty">
+
+            📦 No trades yet.
+
+        </div>
+        `;
+
+        return;
+
+    }
+
+    let list = [...tradeHistory];
+
+    const search =
+        document.getElementById("historySearch").value.toLowerCase();
+
+    const filter =
+        document.getElementById("historyFilter").value;
+
+    const sort =
+        document.getElementById("historySort").value;
+
+    if(search){
+
+        list = list.filter(t=>{
+
+            const pokemon =
+                pokemonList.find(p=>p.id==t.pokemon_id);
+
+            return (
+
+                (pokemon?.pokemon_name || "")
+                .toLowerCase()
+                .includes(search)
+
+                ||
+
+                (t.person_name || "")
+                .toLowerCase()
+                .includes(search)
+
+                ||
+
+                (t.received_item || "")
+                .toLowerCase()
+                .includes(search)
+
+            );
+
+        });
+
+    }
+
+    if(filter!="all"){
+
+        list =
+            list.filter(t=>t.trade_type===filter);
+
+    }
+
+    if(sort==="oldest"){
+
+        list.reverse();
+
+    }
+
+    history.innerHTML = "";
+
+    list.forEach(trade=>{
+
+        const pokemon =
+            pokemonList.find(p=>p.id==trade.pokemon_id);
+
+        history.innerHTML += `
+
+        <div class="tradeCard ${trade.trade_type}">
+
+            <h3>
+
+                ${trade.trade_type=="traded"
+                    ? "📤 Traded"
+                    : "📥 Received"}
+
+            </h3>
+
+            <div class="row">
+
+                <b>Pokémon:</b>
+
+                ${pokemon?.pokemon_name || "Unknown"}
+
+            </div>
+
+            <div class="row">
+
+                <b>Tag:</b>
+
+                ${pokemon?.tag_code || "-"}
+
+            </div>
+
+            <div class="row">
+
+                <b>Qty:</b>
+
+                ${trade.quantity}
+
+            </div>
+
+            <div class="row">
+
+                <b>Person:</b>
+
+                ${trade.person_name || "-"}
+
+            </div>
+
+            <div class="row">
+
+                <b>Received:</b>
+
+                ${trade.received_item || "-"}
+
+            </div>
+
+            <div class="row">
+
+                <b>Date:</b>
+
+                ${trade.trade_date}
+
+            </div>
+
+            <div class="tradeActions">
+
+                <button
+                    class="editBtn"
+                    onclick="editTrade(${trade.id})">
+
+                    ✏ Edit
+
+                </button>
+
+                <button
+                    class="deleteBtn"
+                    onclick="deleteTrade(${trade.id})">
+
+                    🗑 Delete
+
+                </button>
+
+            </div>
+
+        </div>
+
+        `;
+
+    });
+
+}
+        async function saveTrade(){
+
+    const editingId =
+        document.getElementById("editingTradeId").value;
+
+    const trade = {
+
+        user_id: userId,
+
+        pokemon_id: Number(
+            document.getElementById("pokemonSelect").value
+        ),
+
+        trade_type:
+            document.getElementById("tradeType").value,
+
+        quantity:
+            Number(
+                document.getElementById("quantity").value
+            ),
+
+        person_name:
+            document.getElementById("person").value.trim(),
+
+        received_item:
+            document.getElementById("receivedItem").value.trim(),
+
+        trade_date:
+            document.getElementById("tradeDate").value,
+
+        notes:
+            document.getElementById("notes").value.trim()
+
+    };
+
+    if(!trade.pokemon_id){
+
+        alert("Please select a Pokémon.");
+
+        return;
+
+    }
+
+    let error;
+
+    if(editingId){
+
+        ({ error } = await db
+
+            .from("trade_history")
+
+            .update(trade)
+
+            .eq("id", editingId)
+
+        );
+
+    }else{
+
+        ({ error } = await db
+
+            .from("trade_history")
+
+            .insert(trade)
+
+        );
+
+    }
+
+    if(error){
+
+        console.error(error);
+
+        alert(error.message);
+
+        return;
+
+    }
+
+    clearTradeForm();
+
+    await loadTradeHistory();
+
+    updateSummary();
+
+         
+}
+        function clearTradeForm(){
+
+    document.getElementById("editingTradeId").value = "";
+
+    document.getElementById("tradeType").value = "traded";
+
+    document.getElementById("pokemonSelect").selectedIndex = 0;
+
+    document.getElementById("quantity").value = 1;
+
+    document.getElementById("person").value = "";
+
+    document.getElementById("receivedItem").value = "";
+
+    document.getElementById("notes").value = "";
+
+    document.getElementById("tradeDate").value =
+        new Date().toISOString().split("T")[0];
+
+}
+
+async function editTrade(id){
+
+    const trade =
+        tradeHistory.find(t => t.id == id);
+
+    if(!trade) return;
+
+    document.getElementById("editingTradeId").value = trade.id;
+
+    document.getElementById("tradeType").value = trade.trade_type;
+
+    document.getElementById("pokemonSelect").value = trade.pokemon_id;
+
+    document.getElementById("quantity").value = trade.quantity;
+
+    document.getElementById("person").value = trade.person_name || "";
+
+    document.getElementById("receivedItem").value = trade.received_item || "";
+
+    document.getElementById("tradeDate").value = trade.trade_date;
+
+    document.getElementById("notes").value = trade.notes || "";
+
+    window.scrollTo({
+
+        top: 0,
+
+        behavior: "smooth"
+
+    });
+
+}
+        async function deleteTrade(id){
+
+    if(!confirm("Delete this trade?")){
+
+        return;
+
+    }
+
+    const { error } = await db
+
+        .from("trade_history")
+
+        .delete()
+
+        .eq("id", id);
+
+    if(error){
+
+        alert(error.message);
+
+        return;
+
+    }
+
+    await loadTradeHistory();
+
+    updateSummary();
+
+}
+
+</script>
+
+</body>
+
+</html>
