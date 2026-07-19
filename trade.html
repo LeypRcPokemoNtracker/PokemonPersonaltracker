@@ -1,1 +1,247 @@
 
+<body>
+
+<header>
+
+    <h2>🔄 Trade Center</h2>
+
+    <div>
+
+        <button onclick="location.href='dashboard.html'">
+            🏠 Home
+        </button>
+
+        <button onclick="location.href='collection.html'">
+            📖 Collection
+        </button>
+
+        <button onclick="location.href='owned.html'">
+            🎒 My Tags
+        </button>
+
+        <button onclick="location.href='battle.html'">
+            ⚔ Battle Helper
+        </button>
+
+    </div>
+
+</header>
+
+<div class="container">
+
+    <!-- SUMMARY -->
+
+    <div class="summary">
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Total Trades
+            </div>
+
+            <div class="summaryValue" id="totalTrades">
+                0
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Pokémon Traded
+            </div>
+
+            <div
+                class="summaryValue summaryMissing"
+                id="totalTraded">
+
+                0
+
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Pokémon Received
+            </div>
+
+            <div
+                class="summaryValue summaryAssigned"
+                id="totalReceived">
+
+                0
+
+            </div>
+
+        </div>
+
+        <div class="summaryCard">
+
+            <div class="summaryTitle">
+                Trade Partners
+            </div>
+
+            <div
+                class="summaryValue summaryPercent"
+                id="totalPartners">
+
+                0
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- NEW TRADE -->
+
+    <div class="tradeForm">
+
+        <h2>
+            ➕ New Trade
+        </h2>
+
+        <div class="formGrid">
+
+            <div>
+
+                <label>
+
+                    Trade Type
+
+                </label>
+
+                <select id="tradeType">
+
+                    <option value="traded">
+                        📤 Traded
+                    </option>
+
+                    <option value="received">
+                        📥 Received
+                    </option>
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Pokémon
+
+                </label>
+
+                <select id="pokemonSelect">
+
+                    <option value="">
+                        Select Pokémon...
+                    </option>
+
+                </select>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Quantity
+
+                </label>
+
+                <input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value="1">
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Person
+
+                </label>
+
+                <input
+                    id="person"
+                    type="text"
+                    placeholder="John">
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Received In Return
+
+                </label>
+
+                <input
+                    id="receivedItem"
+                    type="text"
+                    placeholder="Rayquaza / ₱500 / Gift">
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Trade Date
+
+                </label>
+
+                <input
+                    id="tradeDate"
+                    type="date">
+
+            </div>
+
+        </div>
+
+        <label style="margin-top:18px;display:block;">
+
+            Notes
+
+        </label>
+
+        <textarea
+            id="notes"
+            rows="4"
+            placeholder="Optional notes..."></textarea>
+
+        <div class="checkboxRow">
+
+            <input
+                id="updateCollection"
+                type="checkbox"
+                checked>
+
+            <label for="updateCollection">
+
+                Automatically update my collection
+
+            </label>
+
+        </div>
+
+        <div class="buttonRow">
+
+            <button
+                id="saveTradeBtn">
+
+                💾 Save Trade
+
+            </button>
+
+        </div>
+
+    </div>
