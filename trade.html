@@ -1,247 +1,196 @@
-
-<body>
-
-<header>
-
-    <h2>🔄 Trade Center</h2>
-
-    <div>
-
-        <button onclick="location.href='dashboard.html'">
-            🏠 Home
-        </button>
-
-        <button onclick="location.href='collection.html'">
-            📖 Collection
-        </button>
-
-        <button onclick="location.href='owned.html'">
-            🎒 My Tags
-        </button>
-
-        <button onclick="location.href='battle.html'">
-            ⚔ Battle Helper
-        </button>
-
-    </div>
-
-</header>
-
-<div class="container">
-
-    <!-- SUMMARY -->
-
-    <div class="summary">
-
-        <div class="summaryCard">
-
-            <div class="summaryTitle">
-                Total Trades
-            </div>
-
-            <div class="summaryValue" id="totalTrades">
-                0
-            </div>
-
-        </div>
-
-        <div class="summaryCard">
-
-            <div class="summaryTitle">
-                Pokémon Traded
-            </div>
-
-            <div
-                class="summaryValue summaryMissing"
-                id="totalTraded">
-
-                0
-
-            </div>
-
-        </div>
-
-        <div class="summaryCard">
-
-            <div class="summaryTitle">
-                Pokémon Received
-            </div>
-
-            <div
-                class="summaryValue summaryAssigned"
-                id="totalReceived">
-
-                0
-
-            </div>
-
-        </div>
-
-        <div class="summaryCard">
-
-            <div class="summaryTitle">
-                Trade Partners
-            </div>
-
-            <div
-                class="summaryValue summaryPercent"
-                id="totalPartners">
-
-                0
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- NEW TRADE -->
-
-    <div class="tradeForm">
-
-        <h2>
-            ➕ New Trade
-        </h2>
-
-        <div class="formGrid">
-
-            <div>
-
-                <label>
-
-                    Trade Type
-
-                </label>
-
-                <select id="tradeType">
-
-                    <option value="traded">
-                        📤 Traded
-                    </option>
-
-                    <option value="received">
-                        📥 Received
-                    </option>
-
-                </select>
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Pokémon
-
-                </label>
-
-                <select id="pokemonSelect">
-
-                    <option value="">
-                        Select Pokémon...
-                    </option>
-
-                </select>
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Quantity
-
-                </label>
-
-                <input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value="1">
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Person
-
-                </label>
-
-                <input
-                    id="person"
-                    type="text"
-                    placeholder="John">
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Received In Return
-
-                </label>
-
-                <input
-                    id="receivedItem"
-                    type="text"
-                    placeholder="Rayquaza / ₱500 / Gift">
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Trade Date
-
-                </label>
-
-                <input
-                    id="tradeDate"
-                    type="date">
-
-            </div>
-
-        </div>
-
-        <label style="margin-top:18px;display:block;">
-
-            Notes
-
-        </label>
-
-        <textarea
-            id="notes"
-            rows="4"
-            placeholder="Optional notes..."></textarea>
-
-        <div class="checkboxRow">
-
-            <input
-                id="updateCollection"
-                type="checkbox"
-                checked>
-
-            <label for="updateCollection">
-
-                Automatically update my collection
-
-            </label>
-
-        </div>
-
-        <div class="buttonRow">
-
-            <button
-                id="saveTradeBtn">
-
-                💾 Save Trade
-
-            </button>
-
-        </div>
-
-    </div>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Mezastar Trade Center</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    background:#0b1320;
+    color:#fff;
+    min-height:100vh;
+}
+
+header{
+    background:#13233d;
+    padding:18px 24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+    box-shadow:0 2px 12px rgba(0,0,0,.35);
+}
+
+header h2{
+    font-size:24px;
+    color:#ffd54f;
+}
+
+header div{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+header button{
+    background:#1976d2;
+    border:none;
+    color:white;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:.2s;
+    font-weight:bold;
+}
+
+header button:hover{
+    background:#1565c0;
+}
+
+.container{
+    width:min(1400px,95%);
+    margin:25px auto;
+}
+
+.summary{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:18px;
+    margin-bottom:25px;
+}
+
+.summaryCard{
+    background:#162844;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);
+    transition:.25s;
+}
+
+.summaryCard:hover{
+    transform:translateY(-4px);
+}
+
+.summaryTitle{
+    color:#b9c6d8;
+    font-size:14px;
+    margin-bottom:8px;
+}
+
+.summaryValue{
+    font-size:34px;
+    font-weight:bold;
+}
+
+.summaryMissing{
+    color:#ff6b6b;
+}
+
+.summaryAssigned{
+    color:#51cf66;
+}
+
+.summaryPercent{
+    color:#ffd43b;
+}
+
+.tradeForm,
+.tradeHistory{
+    background:#162844;
+    border-radius:14px;
+    padding:25px;
+    margin-bottom:25px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+
+.tradeForm h2,
+.tradeHistory h2{
+    margin-bottom:20px;
+    color:#ffd54f;
+}
+
+.formGrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:18px;
+}
+
+label{
+    display:block;
+    margin-bottom:6px;
+    font-weight:bold;
+}
+
+input,
+select,
+textarea{
+    width:100%;
+    padding:11px;
+    border-radius:8px;
+    border:none;
+    outline:none;
+    background:#22395f;
+    color:white;
+}
+
+input::placeholder,
+textarea::placeholder{
+    color:#b7bfd0;
+}
+
+textarea{
+    resize:vertical;
+}
+
+.checkboxRow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:20px;
+}
+
+.checkboxRow input{
+    width:auto;
+}
+
+.buttonRow{
+    margin-top:20px;
+}
+
+.buttonRow button{
+    background:#2e7d32;
+    color:white;
+    border:none;
+    padding:12px 24px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:bold;
+    transition:.2s;
+}
+
+.buttonRow button:hover{
+    background:#1b5e20;
+}
+
+/* CSS continues in Part 2... */
+
+</style>
+
+</head>
