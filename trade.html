@@ -788,26 +788,43 @@ function renderHistory(){
             const pokemon =
                 pokemonList.find(p=>p.id==t.pokemon_id);
 
-            return (
+       return (
 
-                (pokemon?.pokemon_name || "")
-                .toLowerCase()
-                .includes(search)
+    (pokemon?.pokemon_name || "")
+        .toLowerCase()
+        .includes(search)
 
-                ||
+    ||
 
-                (t.person_name || "")
-                .toLowerCase()
-                .includes(search)
+    (pokemon?.tag_code || "")
+        .toLowerCase()
+        .includes(search)
 
-                ||
+    ||
 
-                (t.received_item || "")
-                .toLowerCase()
-                .includes(search)
+    (pokemon?.version_name || "")
+        .toLowerCase()
+        .includes(search)
 
-            );
+    ||
 
+    (t.person_name || "")
+        .toLowerCase()
+        .includes(search)
+
+    ||
+
+    (t.received_item || "")
+        .toLowerCase()
+        .includes(search)
+
+    ||
+
+    (t.notes || "")
+        .toLowerCase()
+        .includes(search)
+
+);
         });
 
     }
@@ -835,14 +852,15 @@ function renderHistory(){
         history.innerHTML += `
 
         <div class="tradeCard ${trade.trade_type}">
+<h3>
 
-            <h3>
+    ${trade.trade_type=="traded"
+        ? "📤 Traded"
+        : "📥 Received"}
 
-                ${trade.trade_type=="traded"
-                    ? "📤 Traded"
-                    : "📥 Received"}
+    ×${trade.quantity}
 
-            </h3>
+</h3>
 
             <div class="row">
 
@@ -851,7 +869,22 @@ function renderHistory(){
                 ${pokemon?.pokemon_name || "Unknown"}
 
             </div>
+<div class="row">
 
+    <b>Rarity:</b>
+
+    ${"★".repeat(pokemon?.rarity || 0)}
+
+</div>
+
+            
+<div class="row">
+
+    <b>Version:</b>
+
+    ${pokemon?.version_name || "-"}
+
+</div>
             <div class="row">
 
                 <b>Tag:</b>
@@ -860,13 +893,7 @@ function renderHistory(){
 
             </div>
 
-            <div class="row">
-
-                <b>Qty:</b>
-
-                ${trade.quantity}
-
-            </div>
+        
 
             <div class="row">
 
@@ -891,6 +918,17 @@ function renderHistory(){
                 ${trade.trade_date}
 
             </div>
+            ${trade.notes ? `
+
+<div class="row">
+
+    <b>Notes:</b>
+
+    ${trade.notes}
+
+</div>
+
+` : ""}
 
             <div class="tradeActions">
 
