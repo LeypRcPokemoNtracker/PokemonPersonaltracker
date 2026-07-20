@@ -417,9 +417,10 @@ header button{
 
                 <label>Pokémon</label>
 
-                <select id="pokemonSelect">
-
-                    <option value="">Loading Pokémon...</option>
+<select
+id="pokemonSelect"
+onchange="updateOwnedInfo()">
+                    <option value="">Select Pokémon</option>
 
                 </select>
 
@@ -427,16 +428,27 @@ header button{
 
             <div>
 
-                <label>Quantity</label>
+               <label>Quantity</label>
 
-                <input
-                    id="quantity"
-                    type="number"
-                    value="1"
-                    min="1">
+<input
+    id="quantity"
+    type="number"
+    value="1"
+    min="1">
 
-            </div>
+<div
+id="ownedInfo"
+style="
+margin-top:8px;
+font-size:13px;
+color:#94a3b8;
+">
 
+Owned:
+-
+
+</div>
+</div>
             <div>
 
                 <label>Person</label>
@@ -743,7 +755,45 @@ const { data, error } = await db
     renderHistory();
 
 }
+async function updateOwnedInfo(){
 
+const pokemonId =
+Number(
+document.getElementById("pokemonSelect").value
+);
+
+const info =
+document.getElementById("ownedInfo");
+
+if(!pokemonId){
+
+info.innerHTML =
+"Owned: -";
+
+return;
+
+}
+
+const { data } =
+await db
+
+.from("user_collection")
+
+.select("quantity")
+
+.eq("user_id",userId)
+
+.eq("pokemon_id",pokemonId)
+
+.maybeSingle();
+
+const qty =
+data?.quantity || 0;
+
+info.innerHTML =
+`Owned: <b>${qty}</b>`;
+
+}
 function updateSummary(){
 
     document.getElementById("totalTrades").textContent =
@@ -816,8 +866,8 @@ function renderHistory(){
 
     ||
 
-    (pokemon?.version_name || "")
-        .toLowerCase()
+(String(pokemon?.version || ""))
+           .toLowerCase()
         .includes(search)
 
     ||
@@ -1024,6 +1074,37 @@ ${{
         return;
 
     }
+            if(trade.trade_type==="traded"){
+
+const { data } =
+await db
+
+.from("user_collection")
+
+.select("quantity")
+
+.eq("user_id",userId)
+
+.eq("pokemon_id",trade.pokemon_id)
+
+.maybeSingle();
+
+const ownedQty =
+data?.quantity || 0;
+
+if(trade.quantity > ownedQty){
+
+alert(
+
+`You only own ${ownedQty} copy/copies of this Pokémon.`
+
+);
+
+return;
+
+}
+
+}
 
     let error;
 
@@ -1080,7 +1161,7 @@ await loadTradeHistory();
 updateSummary();
 
 clearTradeForm();
-
+updateOwnedInfo();
          
 }
         function clearTradeForm(){
@@ -1116,6 +1197,7 @@ async function editTrade(id){
     document.getElementById("tradeType").value = trade.trade_type;
 
     document.getElementById("pokemonSelect").value = trade.pokemon_id;
+    await updateOwnedInfo();
 
     document.getElementById("quantity").value = trade.quantity;
 
