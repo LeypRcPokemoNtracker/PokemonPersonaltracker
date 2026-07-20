@@ -592,30 +592,29 @@ init();
 
 async function init(){
 
+   
     document.getElementById("tradeDate").value =
         new Date().toISOString().split("T")[0];
 
-    await Promise.all([
+    // Pokémon MUST load first
+    await loadPokemon();
 
-        loadPokemon(),
-
-        loadTradeHistory()
-
-    ]);
+    // Then load history
+    await loadTradeHistory();
 
     updateSummary();
-       document
-.getElementById("historySearch")
-.addEventListener("input",renderHistory);
 
-document
-.getElementById("historyFilter")
-.addEventListener("change",renderHistory);
+    document
+    .getElementById("historySearch")
+    .addEventListener("input",renderHistory);
 
-document
-.getElementById("historySort")
-.addEventListener("change",renderHistory);
+    document
+    .getElementById("historyFilter")
+    .addEventListener("change",renderHistory);
 
+    document
+    .getElementById("historySort")
+    .addEventListener("change",renderHistory);
 
 }
 async function loadPokemon(){
@@ -702,6 +701,14 @@ optgroup.label =
     select.appendChild(optgroup);
 
 });
+// If trade history already exists,
+// redraw it now that Pokémon names are available.
+if(tradeHistory.length){
+
+    renderHistory();
+
+}
+
 
 }
 
@@ -847,7 +854,9 @@ function renderHistory(){
     list.forEach(trade=>{
 
         const pokemon =
-            pokemonList.find(p=>p.id==trade.pokemon_id);
+    pokemonList.find(
+        p => Number(p.id) === Number(trade.pokemon_id)
+    );
 
         history.innerHTML += `
 
@@ -1047,11 +1056,14 @@ function renderHistory(){
 
 await updateCollection(trade);
 
-clearTradeForm();
+// Reload Pokémon list in case one was just added/edited
+await loadPokemon();
 
 await loadTradeHistory();
 
 updateSummary();
+
+clearTradeForm();
 
          
 }
