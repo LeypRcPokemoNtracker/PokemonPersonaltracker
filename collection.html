@@ -976,14 +976,17 @@ onclick="openEditPokemon(${p.id})">
 <button
 style="
 padding:3px 6px;
-font-size:12px;
+font-size:16px;
 background:transparent;
-color:#ef4444;
+color:#dc2626;
 border:none;
 cursor:pointer;
+transition:.2s;
 "
 title="Delete"
-onclick="deletePokemon(${p.id})">
+onclick="deletePokemon(${p.id})"
+onmouseover="this.style.color='#ef4444'"
+onmouseout="this.style.color='#dc2626'">
 
 🗑️
 
