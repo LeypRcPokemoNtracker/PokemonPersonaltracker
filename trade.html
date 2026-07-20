@@ -1074,7 +1074,7 @@ ${{
         return;
 
     }
-            if(trade.trade_type==="traded"){
+          if(trade.trade_type==="traded"){
 
 const { data } =
 await db
@@ -1090,20 +1090,38 @@ await db
 .maybeSingle();
 
 const ownedQty =
-data?.quantity || 0;
+Number(data?.quantity || 0);
 
+// Can't trade more than owned
 if(trade.quantity > ownedQty){
 
 alert(
-
 `You only own ${ownedQty} copy/copies of this Pokémon.`
-
 );
 
 return;
 
 }
 
+// Trading the last copy
+if(trade.quantity === ownedQty){
+
+const pokemon =
+pokemonList.find(
+p => Number(p.id) === trade.pokemon_id
+);
+
+const ok = confirm(
+
+`⚠ You are about to trade your LAST copy of\n\n${pokemon?.pokemon_name || "this Pokémon"}.\n\nContinue?`
+
+);
+
+if(!ok){
+return;
+}
+
+}
 }
 
     let error;
