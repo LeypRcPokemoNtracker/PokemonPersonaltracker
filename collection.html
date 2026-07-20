@@ -964,11 +964,28 @@ font-size:12px;
 background:transparent;
 color:#94a3b8;
 border:none;
+cursor:pointer;
 "
 title="Edit"
 onclick="openEditPokemon(${p.id})">
 
 ✏️
+
+</button>
+
+<button
+style="
+padding:3px 6px;
+font-size:12px;
+background:transparent;
+color:#ef4444;
+border:none;
+cursor:pointer;
+"
+title="Delete"
+onclick="deletePokemon(${p.id})">
+
+🗑️
 
 </button>
 
@@ -1261,6 +1278,106 @@ document.getElementById("imageViewer").style.display = "flex";
 function closeImageViewer(){
 
 document.getElementById("imageViewer").style.display = "none";
+
+}
+  async function deletePokemon(id){
+
+    const pokemon =
+        allPokemon.find(p => p.id == id);
+
+    if(!pokemon){
+        return;
+    }
+
+    // Check user collections
+    const { data: collectionRows, error: collectionError } = await db
+        .from("user_collection")
+        .select("id");
+
+    if(collectionError){
+        alert(collectionError.message);
+        return;
+    }
+
+    const collectionCount =
+        collectionRows.filter(x => x.pokemon_id == id).length;
+
+    if(collectionCount > 0){
+
+        alert(
+            `Cannot delete "${pokemon.pokemon_name}".\n\n` +
+            `It is currently owned by ${collectionCount} user(s).`
+        );
+
+        return;
+    }
+
+    // Check trade history
+    const { data: tradeRows, error: tradeError } = await db
+        .from("trade_history")
+        .select("id");
+
+    if(tradeError){
+        alert(tradeError.message);
+        return;
+    }
+
+    const tradeCount =
+        tradeRows.filter(x => x.pokemon_id == id).length;
+
+    if(tradeCount > 0){
+
+        alert(
+            `Cannot delete "${pokemon.pokemon_name}".\n\n` +
+            `It is used in ${tradeCount} trade record(s).\n\n` +
+            `Deleting it would break Trade History.`
+        );
+
+        return;
+    }
+
+    const ok = confirm(
+        `Delete "${pokemon.pokemon_name}"?\n\nThis action cannot be undone.`
+    );
+
+    if(!ok){
+        return;
+    }
+
+    const { error } = await db
+        .from("pokemon_master")
+        .delete()
+        .eq("id", id);
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    alert("Pokémon deleted successfully.");
+
+    if(currentView==="owned"){
+
+        loadOwned(
+            document.getElementById("ownedBtn")
+        );
+
+    }
+    else if(currentView==="missing"){
+
+        loadMissing(
+            document.getElementById("missingBtn")
+        );
+
+    }
+    else{
+
+        loadVersion(
+            currentVersion,
+            document.querySelector(".version-btn.active")
+        );
+
+    }
 
 }
 
