@@ -1280,7 +1280,7 @@ function closeImageViewer(){
 document.getElementById("imageViewer").style.display = "none";
 
 }
-  async function deletePokemon(id){
+ async function deletePokemon(id){
 
     const pokemon =
         allPokemon.find(p => p.id == id);
@@ -1289,69 +1289,94 @@ document.getElementById("imageViewer").style.display = "none";
         return;
     }
 
-    // Check user collections
-    const { data: collectionRows, error: collectionError } = await db
+    // Check if anyone owns this Pokémon
+    const {
+        count: collectionCount,
+        error: collectionError
+    } = await db
         .from("user_collection")
-        .select("id");
+        .select("*", {
+            count: "exact",
+            head: true
+        })
+        .eq("pokemon_id", id);
 
     if(collectionError){
-        alert(collectionError.message);
-        return;
-    }
 
-    const collectionCount =
-        collectionRows.filter(x => x.pokemon_id == id).length;
+        alert(collectionError.message);
+
+        return;
+
+    }
 
     if(collectionCount > 0){
 
         alert(
-            `Cannot delete "${pokemon.pokemon_name}".\n\n` +
+            `"${pokemon.pokemon_name}" cannot be deleted.\n\n` +
             `It is currently owned by ${collectionCount} user(s).`
         );
 
         return;
+
     }
 
-    // Check trade history
-    const { data: tradeRows, error: tradeError } = await db
+    // Check if this Pokémon exists in Trade History
+    const {
+        count: tradeCount,
+        error: tradeError
+    } = await db
         .from("trade_history")
-        .select("id");
+        .select("*", {
+            count: "exact",
+            head: true
+        })
+        .eq("pokemon_id", id);
 
     if(tradeError){
-        alert(tradeError.message);
-        return;
-    }
 
-    const tradeCount =
-        tradeRows.filter(x => x.pokemon_id == id).length;
+        alert(tradeError.message);
+
+        return;
+
+    }
 
     if(tradeCount > 0){
 
         alert(
-            `Cannot delete "${pokemon.pokemon_name}".\n\n` +
-            `It is used in ${tradeCount} trade record(s).\n\n` +
-            `Deleting it would break Trade History.`
+            `"${pokemon.pokemon_name}" cannot be deleted.\n\n` +
+            `It is referenced by ${tradeCount} trade record(s).\n\n` +
+            `Delete those trade records first.`
         );
 
         return;
+
     }
 
-    const ok = confirm(
-        `Delete "${pokemon.pokemon_name}"?\n\nThis action cannot be undone.`
+    const confirmed = confirm(
+
+        `Delete "${pokemon.pokemon_name}"?\n\n` +
+        `This action cannot be undone.`
+
     );
 
-    if(!ok){
+    if(!confirmed){
         return;
     }
 
     const { error } = await db
+
         .from("pokemon_master")
+
         .delete()
+
         .eq("id", id);
 
     if(error){
+
         alert(error.message);
+
         return;
+
     }
 
     alert("Pokémon deleted successfully.");
@@ -1380,7 +1405,6 @@ document.getElementById("imageViewer").style.display = "none";
     }
 
 }
-
 async function savePokemon(){
 
 const version =
