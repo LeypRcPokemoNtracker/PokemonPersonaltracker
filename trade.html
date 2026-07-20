@@ -622,15 +622,15 @@ async function loadPokemon(){
 const { data, error } = await db
         .from("pokemon_master")
 
-    .select(`
-    id,
-    pokemon_name,
-    rarity,
-    tag_code,
-    version_name
+ .select(`
+id,
+pokemon_name,
+rarity,
+tag_code,
+version
 `)
-      .order("version_name")
-.order("tag_code");
+.order("version")
+.order("tag_code")
 
     if(error){
 
@@ -652,8 +652,16 @@ const grouped = {};
 
 data.forEach(pokemon=>{
 
-    const version =
-        pokemon.version_name || "Other";
+const version = {
+
+1:"V1",
+2:"V2",
+3:"V3",
+4:"Galaxy 🌌",
+5:"Promo 🎁",
+6:"Others 🌍"
+
+}[pokemon.version] || "Other";
 
     if(!grouped[version]){
 
@@ -1159,27 +1167,7 @@ async function editTrade(id){
     updateSummary();
 
 }
-    const { error } = await db
-
-        .from("trade_history")
-
-        .delete()
-
-        .eq("id", id);
-
-    if(error){
-
-        alert(error.message);
-
-        return;
-
-    }
-
-    await loadTradeHistory();
-
-    updateSummary();
-
-}
+   
 async function reverseCollection(trade){
 
     if(!document.getElementById("updateCollection").checked){
