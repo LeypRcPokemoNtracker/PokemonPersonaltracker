@@ -1160,41 +1160,52 @@ async function editTrade(id){
 
     }
 
-    if(existing){
+  if(existing){
 
-        let qty = existing.quantity || 0;
+    let qty = Number(existing.quantity || 0);
 
-        if(trade.trade_type==="received"){
+    if(trade.trade_type === "received"){
 
-            qty += trade.quantity;
-
-        }else{
-
-            qty -= trade.quantity;
-
-            if(qty < 0){
-
-                qty = 0;
-
-            }
-
-        }
-
-        await db
-
-            .from("user_collection")
-
-            .update({
-
-                quantity: qty,
-
-                owned: qty > 0
-
-            })
-
-            .eq("id", existing.id);
+        qty += Number(trade.quantity);
 
     }else{
+
+        qty -= Number(trade.quantity);
+
+        if(qty < 0){
+            qty = 0;
+        }
+
+    }
+
+    if(qty === 0){
+
+        const { error } = await db
+            .from("user_collection")
+            .delete()
+            .eq("id", existing.id);
+
+        if(error){
+            console.error(error);
+        }
+
+    }else{
+
+        const { error } = await db
+            .from("user_collection")
+            .update({
+                quantity: qty,
+                owned: true
+            })
+            .eq("id", existing.id);
+
+        if(error){
+            console.error(error);
+        }
+
+    }
+
+}else{
 
         if(trade.trade_type==="received"){
 
