@@ -1004,17 +1004,26 @@ function renderHistory(){
 
     if(editingId){
 
-        ({ error } = await db
-
-            .from("trade_history")
-
-            .update(trade)
-
-            .eq("id", editingId)
-
+    const oldTrade =
+        tradeHistory.find(
+            t => t.id == editingId
         );
 
-    }else{
+    if(oldTrade){
+
+        await reverseCollection(oldTrade);
+
+    }
+
+    ({ error } = await db
+
+        .from("trade_history")
+
+        .update(trade)
+
+        .eq("id", editingId);
+
+}else{
 
         ({ error } = await db
 
@@ -1101,12 +1110,43 @@ async function editTrade(id){
 }
         async function deleteTrade(id){
 
+    const trade =
+        tradeHistory.find(
+            t => t.id == id
+        );
+
+    if(!trade){
+        return;
+    }
+
     if(!confirm("Delete this trade?")){
+        return;
+    }
+
+    await reverseCollection(trade);
+
+    const { error } =
+    await db
+
+    .from("trade_history")
+
+    .delete()
+
+    .eq("id", id);
+
+    if(error){
+
+        alert(error.message);
 
         return;
 
     }
 
+    await loadTradeHistory();
+
+    updateSummary();
+
+}
     const { error } = await db
 
         .from("trade_history")
@@ -1128,7 +1168,71 @@ async function editTrade(id){
     updateSummary();
 
 }
+async function reverseCollection(trade){
 
+    if(!document.getElementById("updateCollection").checked){
+        return;
+    }
+
+    const { data: existing } =
+    await db
+
+    .from("user_collection")
+
+    .select("*")
+
+    .eq("user_id", userId)
+
+    .eq("pokemon_id", trade.pokemon_id)
+
+    .maybeSingle();
+
+    if(!existing){
+        return;
+    }
+
+    let qty =
+        Number(existing.quantity || 0);
+
+    if(trade.trade_type==="received"){
+
+        qty -= Number(trade.quantity);
+
+    }else{
+
+        qty += Number(trade.quantity);
+
+    }
+
+    if(qty<=0){
+
+        await db
+
+        .from("user_collection")
+
+        .delete()
+
+        .eq("id", existing.id);
+
+    }else{
+
+        await db
+
+        .from("user_collection")
+
+        .update({
+
+            quantity:qty,
+
+            owned:true
+
+        })
+
+        .eq("id", existing.id);
+
+    }
+
+}
       async function updateCollection(trade){
 
     const enabled =
