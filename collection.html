@@ -1097,21 +1097,40 @@ async function toggleOwned(pokemonId, owned){
 
 if(owned){
 
-const qty =
-ownedMap[pokemonId]?.quantity || 1;
+const existing =
+ownedMap[pokemonId];
 
-const {error} = await db
-.from('user_collection')
-.upsert({
+if(existing){
+
+const { error } = await db
+.from("user_collection")
+.update({
+owned:true,
+quantity:existing.quantity || 1
+})
+.eq("id", existing.id);
+
+if(error){
+console.error(error);
+return;
+}
+
+}else{
+
+const { error } = await db
+.from("user_collection")
+.insert({
 user_id:Number(userId),
 pokemon_id:pokemonId,
 owned:true,
-quantity:qty
+quantity:1
 });
 
 if(error){
 console.error(error);
 return;
+}
+
 }
 
 }else{
