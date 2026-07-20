@@ -620,9 +620,8 @@ async function init(){
 async function loadPokemon(){
 
 const { data, error } = await db
-        .from("pokemon_master")
-
- .select(`
+.from("pokemon_master")
+.select(`
 id,
 pokemon_name,
 rarity,
@@ -630,7 +629,7 @@ tag_code,
 version
 `)
 .order("version")
-.order("tag_code")
+.order("tag_code");
 
     if(error){
 
@@ -899,7 +898,16 @@ function renderHistory(){
 
     <b>Version:</b>
 
-    ${pokemon?.version_name || "-"}
+${{
+
+1:"V1",
+2:"V2",
+3:"V3",
+4:"Galaxy 🌌",
+5:"Promo 🎁",
+6:"Others 🌍"
+
+}[pokemon?.version] || "-"}
 
 </div>
             <div class="row">
