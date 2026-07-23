@@ -694,6 +694,7 @@ tag_code,
 pokemon_name,
 version,
 collection_name,
+market_price,
 rarity,
 user_collection!left(
 owned,
@@ -1087,8 +1088,36 @@ onclick="changeQty(${p.id},1)">
 
 </div>
 
+<div
+style="
+margin-top:10px;
+padding-top:8px;
+border-top:1px solid #334155;
+display:flex;
+justify-content:space-between;
+align-items:center;
+">
 
-</div>  
+<span
+style="
+font-size:13px;
+color:#94a3b8;
+">
+💰 Market
+</span>
+
+<span
+style="
+font-size:16px;
+font-weight:bold;
+color:#22c55e;
+">
+₱${Number(p.market_price || 0).toLocaleString()}
+</span>
+
+</div>
+
+</div>
 
 `;
 
@@ -1254,7 +1283,8 @@ p.pokemon_name;
 
 document.getElementById("addRarity").value=
 p.rarity;
-
+document.getElementById("addMarketPrice").value =
+p.market_price || 0;
 document.getElementById("addImage").value=
 p.image_url||"";
 
@@ -1282,7 +1312,7 @@ document.getElementById("addImage").value="";
 document.getElementById("addImageFile").value="";
 
 document.getElementById("addRarity").value=6;
-
+document.getElementById("addMarketPrice").value=0;
 document.getElementById("markOwned").checked=false;
 
 document.getElementById("pokemonModal").style.display="flex";
@@ -1459,6 +1489,9 @@ document.getElementById("addPokemonName").value.trim();
 const rarity =
 Number(document.getElementById("addRarity").value);
 
+  const marketPrice =
+Number(document.getElementById("addMarketPrice").value || 0);
+  
 let image=
 document.getElementById("addImage").value.trim();
 
@@ -1543,6 +1576,8 @@ collection_name:collectionName,
 
 rarity:rarity,
 
+market_price:marketPrice,
+
 image_url:image || null
 
 })
@@ -1570,6 +1605,8 @@ version:version,
 collection_name:collectionName,
 
 rarity:rarity,
+
+market_price:marketPrice,
 
 image_url:image || null
 
@@ -2245,7 +2282,16 @@ style="width:100%;padding:10px;margin-bottom:15px;">
 <option value="1">✨ Special</option>
 
 </select>
+<label>Market Price (₱)</label>
 
+<input
+type="number"
+id="addMarketPrice"
+placeholder="0.00"
+step="0.01"
+min="0"
+style="width:100%;padding:10px;margin-bottom:15px;">
+  
 <label
 style="
 display:flex;
