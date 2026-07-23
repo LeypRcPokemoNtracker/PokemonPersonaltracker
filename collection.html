@@ -631,6 +631,28 @@ onkeyup="renderPokemon()">
 
 
 </select>
+
+  <select
+id="sortFilter"
+onchange="renderPokemon()"
+style="
+padding:10px;
+border:none;
+border-radius:8px;
+background:white;
+color:black;
+min-width:170px;
+">
+
+<option value="rarity">⭐ Sort: Rarity</option>
+
+<option value="tag">🔢 Sort: Tag Number</option>
+
+<option value="name">🅰 Sort: Pokémon Name</option>
+
+<option value="price">💰 Sort: Market Price</option>
+
+</select>
 </div>
 
 <div id="collectionSummary" class="summary-card">
@@ -919,30 +941,59 @@ const rarityFilter =
 document.getElementById('rarityFilter')
 .value;
 
-const filtered =
-pokemonList.filter(p => {
+const sortMode =
+document.getElementById("sortFilter").value;
 
-const matchesSearch =
-p.pokemon_name
-.toLowerCase()
-.includes(search);
+filtered.sort((a,b)=>{
 
-const matchesRarity =
+switch(sortMode){
 
-rarityFilter === 'all'
+case "tag":
+return a.tag_code.localeCompare(
+b.tag_code,
+undefined,
+{
+numeric:true,
+sensitivity:"base"
+}
+);
 
-||
+case "name":
+return a.pokemon_name.localeCompare(
+b.pokemon_name
+);
 
-p.rarity == rarityFilter;
+case "price":
+return (b.market_price || 0) -
+(a.market_price || 0);
 
-return matchesSearch &&
-matchesRarity;
+default:
+
+// Current behavior
+if(a.rarity !== b.rarity){
+
+return b.rarity - a.rarity;
+
+}
+
+return a.tag_code.localeCompare(
+b.tag_code,
+undefined,
+{
+numeric:true,
+sensitivity:"base"
+}
+);
+
+}
 
 });
 
 updateCollectionCounters();
 
 let html='';
+
+
 
 filtered.forEach(p=>{
 
