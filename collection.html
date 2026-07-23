@@ -693,6 +693,7 @@ id,
 tag_code,
 pokemon_name,
 version,
+collection_name,
 rarity,
 user_collection!left(
 owned,
@@ -708,7 +709,7 @@ return;
 }
 
 let csv =
-"tag_code,pokemon_name,version,rarity,owned,quantity\n";
+"tag_code,pokemon_name,collection,version,rarity,owned,quantity\n";
 
 data.forEach(p=>{
 
@@ -723,7 +724,7 @@ const quantity =
 record ? record.quantity : 0;
 
 csv +=
-`${p.tag_code},"${p.pokemon_name}",${p.version},${p.rarity},${owned},${quantity}\n`;
+`${p.tag_code},"${p.pokemon_name}","${p.collection_name || ""}",${p.version},${p.rarity},${owned},${quantity}\n`;
 
 });
 
@@ -1437,6 +1438,18 @@ async function savePokemon(){
 const version =
 Number(document.getElementById("addCollection").value);
 
+const collectionMap = {
+1:"V1",
+2:"V2",
+3:"V3",
+4:"Galaxy",
+5:"Promo",
+6:"Others",
+7:"Legacy"
+};
+
+const collectionName = collectionMap[version];
+
 const tag =
 document.getElementById("addTagCode").value.trim();
 
@@ -1526,6 +1539,8 @@ pokemon_name:name,
 
 version:version,
 
+collection_name:collectionName,
+
 rarity:rarity,
 
 image_url:image || null
@@ -1551,6 +1566,8 @@ tag_code:tag,
 pokemon_name:name,
 
 version:version,
+
+collection_name:collectionName,
 
 rarity:rarity,
 
