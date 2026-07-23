@@ -941,6 +941,20 @@ const rarityFilter =
 document.getElementById('rarityFilter')
 .value;
 
+const filtered = pokemonList.filter(p=>{
+
+const matchesSearch =
+p.pokemon_name.toLowerCase().includes(search) ||
+p.tag_code.toLowerCase().includes(search);
+
+const matchesRarity =
+rarityFilter==="all" ||
+String(p.rarity)===rarityFilter;
+
+return matchesSearch && matchesRarity;
+
+});
+
 const sortMode =
 document.getElementById("sortFilter").value;
 
