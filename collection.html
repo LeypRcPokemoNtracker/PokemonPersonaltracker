@@ -7,6 +7,7 @@
 <title>Collection</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
 
@@ -572,34 +573,7 @@ Trades
 
 
   
-<button class="version-btn" onclick="loadVersion(1,this)">
-V1
-</button>
-  
-<button class="version-btn" onclick="loadVersion(2,this)">
-V2
-</button>
-
-<button class="version-btn" onclick="loadVersion(3,this)">
-V3
-</button>
-  <button class="version-btn" onclick="loadVersion(4,this)">
-🌌 Galaxy
-</button>
-  <button class="version-btn" onclick="loadVersion(5,this)">
-Promos
-</button>
- <button class="version-btn" onclick="loadVersion(6,this)">
-🌍 Others
-</button>
-
-<button class="version-btn" onclick="loadVersion(7,this)">
-🏛 Legacy
-</button>
-
-<button class="version-btn active" onclick="loadVersion('all',this)">
-ALL
-</button>
+<div id="versionButtons" style="display:contents;"></div>
 
 <input
 type="text"
@@ -777,21 +751,107 @@ if(!userId){
 location.href='index.html';
 }
 
+const fallbackCollections = [
+{id:1,name:"V1",label:"V1",tag_prefix:"1-1-",sort_order:1,active:true},
+{id:2,name:"V2",label:"V2",tag_prefix:"1-2-",sort_order:2,active:true},
+{id:3,name:"V3",label:"V3",tag_prefix:"1-3-",sort_order:3,active:true},
+{id:8,name:"V4",label:"V4",tag_prefix:"1-4-",sort_order:4,active:true},
+{id:4,name:"Galaxy",label:"🌌 Galaxy",tag_prefix:null,sort_order:5,active:true},
+{id:5,name:"Promo",label:"🎁 Promo",tag_prefix:null,sort_order:6,active:true},
+{id:6,name:"Others",label:"🌍 Others",tag_prefix:null,sort_order:7,active:true},
+{id:7,name:"Legacy",label:"🏛 Legacy",tag_prefix:null,sort_order:8,active:true}
+];
+
+let collections=[...fallbackCollections];
 let allPokemon=[];
 let pokemonList=[];
 let ownedMap={};
 let currentVersion="all";
 let currentView="all";
-
 let editPokemonId=null;
+let importPreviewRows=[];
 
-window.addEventListener("load",()=>{
+function collectionById(id){
+return collections.find(c=>String(c.id)===String(id));
+}
 
+function getCollectionName(id,fallback="Unknown"){
+return collectionById(id)?.name || fallback || "Unknown";
+}
 
-const allBtn =
-document.querySelector(".version-btn.active");
+function getCollectionLabel(id,fallback="Unknown"){
+return collectionById(id)?.label || collectionById(id)?.name || fallback || "Unknown";
+}
 
-loadVersion("all", allBtn);
+function collectionSortOrder(id){
+return collectionById(id)?.sort_order ?? 9999;
+}
+
+async function loadCollections(){
+const {data,error}=await db
+.from("mezastar_collections")
+.select("id,name,label,tag_prefix,sort_order,active")
+.eq("active",true)
+.order("sort_order")
+.order("id");
+
+if(!error && data?.length){
+collections=data;
+}else if(error){
+console.warn("Using fallback collection list. Run mezastar_collections_setup.sql to enable Add Version.",error);
+collections=[...fallbackCollections];
+}
+
+renderVersionButtons();
+populateCollectionSelect();
+}
+
+function renderVersionButtons(){
+const holder=document.getElementById("versionButtons");
+if(!holder) return;
+holder.innerHTML="";
+
+[...collections]
+.sort((a,b)=>(a.sort_order??9999)-(b.sort_order??9999))
+.forEach(c=>{
+const button=document.createElement("button");
+button.className="version-btn";
+button.dataset.version=String(c.id);
+button.textContent=c.label || c.name;
+button.onclick=()=>loadVersion(c.id,button);
+if(String(currentVersion)===String(c.id)) button.classList.add("active");
+holder.appendChild(button);
+});
+
+const allButton=document.createElement("button");
+allButton.className="version-btn";
+allButton.dataset.version="all";
+allButton.textContent="ALL";
+allButton.onclick=()=>loadVersion("all",allButton);
+if(currentVersion==="all") allButton.classList.add("active");
+holder.appendChild(allButton);
+}
+
+function populateCollectionSelect(){
+const select=document.getElementById("addCollection");
+if(!select) return;
+const previous=select.value;
+select.innerHTML="";
+[...collections]
+.sort((a,b)=>(a.sort_order??9999)-(b.sort_order??9999))
+.forEach(c=>{
+const option=document.createElement("option");
+option.value=c.id;
+option.textContent=c.label || c.name;
+select.appendChild(option);
+});
+if(collectionById(previous)) select.value=previous;
+}
+
+window.addEventListener("load",async()=>{
+await loadCollections();
+const allBtn=document.querySelector('.version-btn[data-version="all"]');
+await loadVersion("all",allBtn);
 });
   
 
@@ -1087,15 +1147,7 @@ font-weight:bold;
 color:#cbd5e1;
 ">
 
-${{
-1:"V1",
-2:"V2",
-3:"V3",
-4:"Galaxy 🌌",
-5:"Promo 🎁",
-6:"Others 🌍",
-7:"Legacy 🏛 "
-}[p.version] || "Unknown"}
+${getCollectionLabel(p.version,p.collection_name)}
 
 </span>
 
@@ -1361,7 +1413,8 @@ editPokemonId=null;
 document.getElementById("pokemonModalTitle").innerHTML=
 "Add Pokémon";
 
-document.getElementById("addCollection").value=1;
+document.getElementById("addCollection").value =
+collectionById(currentVersion)?.id || collections[0]?.id || "";
 
 document.getElementById("addTagCode").value="";
 
@@ -1528,17 +1581,13 @@ async function savePokemon(){
 const version =
 Number(document.getElementById("addCollection").value);
 
-const collectionMap = {
-1:"V1",
-2:"V2",
-3:"V3",
-4:"Galaxy",
-5:"Promo",
-6:"Others",
-7:"Legacy"
-};
+const selectedCollection=collectionById(version);
+const collectionName=selectedCollection?.name;
 
-const collectionName = collectionMap[version];
+if(!selectedCollection){
+alert("Please select a valid Collection / Version.");
+return;
+}
 
 const tag =
 document.getElementById("addTagCode").value.trim();
@@ -1727,7 +1776,7 @@ document.getElementById("addImageFile").value="";
 document.getElementById("markOwned").checked=false;
 
 document.getElementById("addRarity").value=6;
-document.getElementById("addCollection").value=1;
+document.getElementById("addCollection").value = collections[0]?.id || "";
 editPokemonId=null;
 
 document.getElementById("pokemonModalTitle").innerHTML=
@@ -1759,7 +1808,312 @@ document.querySelector(".version-btn.active")
 
 
 
-}/* =========================
+}
+
+/* =========================
+   DYNAMIC COLLECTIONS
+========================= */
+function openAddCollectionModal(){
+document.getElementById("newCollectionName").value="";
+document.getElementById("newCollectionPrefix").value="";
+document.getElementById("collectionModal").style.display="flex";
+}
+
+function closeAddCollectionModal(){
+document.getElementById("collectionModal").style.display="none";
+}
+
+async function saveNewCollection(){
+const name=document.getElementById("newCollectionName").value.trim();
+const tagPrefix=document.getElementById("newCollectionPrefix").value.trim();
+
+if(!name){
+alert("Collection / Version name is required.");
+return;
+}
+
+if(collections.some(c=>c.name.toLowerCase()===name.toLowerCase())){
+alert("That Collection / Version already exists.");
+return;
+}
+
+const nextSort=Math.max(0,...collections.map(c=>Number(c.sort_order)||0))+1;
+const {data,error}=await db
+.from("mezastar_collections")
+.insert({
+name:name,
+label:name,
+tag_prefix:tagPrefix || null,
+sort_order:nextSort,
+active:true
+})
+.select()
+.single();
+
+if(error){
+alert(
+"Could not add the Collection / Version.\n\n"+
+error.message+
+"\n\nMake sure mezastar_collections_setup.sql has been run in Supabase."
+);
+return;
+}
+
+await loadCollections();
+document.getElementById("addCollection").value=data.id;
+closeAddCollectionModal();
+alert(`${name} added. It will now appear automatically throughout the tracker.`);
+}
+
+/* =========================
+   EXCEL BULK IMPORT
+========================= */
+function openExcelImportModal(){
+importPreviewRows=[];
+document.getElementById("excelImportFile").value="";
+document.getElementById("excelImportSummary").textContent=
+"Choose the Mezastar Excel template (.xlsx or .xls).";
+document.getElementById("excelImportPreview").innerHTML="";
+document.getElementById("confirmExcelImport").disabled=true;
+document.getElementById("excelImportModal").style.display="flex";
+}
+
+function closeExcelImportModal(){
+document.getElementById("excelImportModal").style.display="none";
+}
+
+function normalizeHeader(value){
+return String(value || "")
+.toLowerCase()
+.replace(/pokémon/g,"pokemon")
+.replace(/[^a-z0-9]/g,"");
+}
+
+function normalizeCollectionValue(value){
+return String(value || "")
+.toLowerCase()
+.replace(/[^a-z0-9]/g,"");
+}
+
+function findImportCollection(value){
+const target=normalizeCollectionValue(value);
+if(!target) return null;
+
+if(/^\d+$/.test(target)){
+const byId=collectionById(Number(target));
+if(byId) return byId;
+}
+
+return collections.find(c=>
+normalizeCollectionValue(c.name)===target ||
+normalizeCollectionValue(c.label)===target
+) || null;
+}
+
+function parseImportRarity(value){
+const text=String(value ?? "").trim();
+if(!text) return null;
+if(/special/i.test(text)) return 1;
+const match=text.match(/[1-6]/);
+return match ? Number(match[0]) : null;
+}
+
+async function handleExcelImport(event){
+const file=event.target.files?.[0];
+if(!file) return;
+
+if(typeof XLSX==="undefined"){
+alert("The Excel reader did not load. Please check your internet connection and refresh the page.");
+return;
+}
+
+try{
+const buffer=await file.arrayBuffer();
+const workbook=XLSX.read(buffer,{type:"array"});
+const firstSheet=workbook.Sheets[workbook.SheetNames[0]];
+const rows=XLSX.utils.sheet_to_json(firstSheet,{defval:"",raw:false});
+
+const parsed=[];
+const seenInFile=new Set();
+
+rows.forEach((row,index)=>{
+const normalized={};
+Object.entries(row).forEach(([key,value])=>{
+normalized[normalizeHeader(key)]=value;
+});
+
+const tag=String(
+normalized.tagnumber ?? normalized.tagcode ?? normalized.tag ?? ""
+).trim();
+const name=String(
+normalized.pokemonname ?? normalized.name ?? ""
+).trim();
+const rarity=parseImportRarity(normalized.rarity);
+const collection=findImportCollection(
+normalized.collection ?? normalized.version ?? ""
+);
+
+if(!tag && !name && !normalized.rarity && !(normalized.collection ?? normalized.version)){
+return;
+}
+
+const errors=[];
+if(!tag) errors.push("Missing Tag Number");
+if(!name) errors.push("Missing Pokémon Name");
+if(!rarity) errors.push("Invalid Rarity");
+if(!collection) errors.push("Unknown Collection");
+if(collection?.tag_prefix && tag && !tag.startsWith(collection.tag_prefix)){
+errors.push(`Tag should start with ${collection.tag_prefix}`);
+}
+if(tag && seenInFile.has(tag.toLowerCase())){
+errors.push("Duplicate tag in Excel file");
+}
+if(tag) seenInFile.add(tag.toLowerCase());
+
+parsed.push({
+row:index+2,
+tag,
+name,
+rarity,
+collection,
+errors
+});
+});
+
+if(!parsed.length){
+alert("No Pokémon rows were found in the first worksheet.");
+return;
+}
+
+const tags=parsed.filter(r=>r.tag).map(r=>r.tag);
+const existingTags=new Set();
+for(let i=0;i<tags.length;i+=100){
+const {data,error}=await db
+.from("pokemon_master")
+.select("tag_code")
+.in("tag_code",tags.slice(i,i+100));
+if(error) throw error;
+(data||[]).forEach(x=>existingTags.add(String(x.tag_code).toLowerCase()));
+}
+
+parsed.forEach(r=>{
+if(r.tag && existingTags.has(r.tag.toLowerCase())){
+r.errors.push("Tag already exists in tracker");
+}
+});
+
+importPreviewRows=parsed;
+renderExcelImportPreview();
+}catch(error){
+console.error(error);
+alert("Could not read the Excel file: "+(error.message || error));
+}
+}
+
+function renderExcelImportPreview(){
+const valid=importPreviewRows.filter(r=>r.errors.length===0);
+const invalid=importPreviewRows.length-valid.length;
+
+document.getElementById("excelImportSummary").textContent=
+`${valid.length} ready to import • ${invalid} skipped / needs fixing`;
+
+document.getElementById("confirmExcelImport").disabled=valid.length===0;
+
+const preview=importPreviewRows.slice(0,100).map(r=>`
+<tr>
+<td style="padding:7px;border-bottom:1px solid #334155;">${r.row}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.tag)}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.name)}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${r.rarity || "-"}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.collection?.label || "-")}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;color:${r.errors.length ? "#f87171" : "#4ade80"};">
+${r.errors.length ? escapeHtml(r.errors.join("; ")) : "Ready"}
+</td>
+</tr>
+`).join("");
+
+document.getElementById("excelImportPreview").innerHTML=`
+<div style="overflow:auto;max-height:360px;">
+<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:720px;">
+<thead>
+<tr style="text-align:left;background:#0f172a;position:sticky;top:0;">
+<th style="padding:7px;">Row</th>
+<th style="padding:7px;">Tag Number</th>
+<th style="padding:7px;">Pokémon Name</th>
+<th style="padding:7px;">Rarity</th>
+<th style="padding:7px;">Collection</th>
+<th style="padding:7px;">Status</th>
+</tr>
+</thead>
+<tbody>${preview}</tbody>
+</table>
+</div>
+${importPreviewRows.length>100 ? `<div style="margin-top:8px;color:#94a3b8;">Preview shows the first 100 rows. All valid rows will still be imported.</div>` : ""}
+`;
+}
+
+function escapeHtml(value){
+return String(value ?? "")
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+}
+
+async function importExcelPokemon(){
+const valid=importPreviewRows.filter(r=>r.errors.length===0);
+if(!valid.length) return;
+
+const confirmed=confirm(`Import ${valid.length} Pokémon into the tracker?`);
+if(!confirmed) return;
+
+const button=document.getElementById("confirmExcelImport");
+button.disabled=true;
+button.textContent="Importing...";
+
+try{
+const payload=valid.map(r=>({
+tag_code:r.tag,
+pokemon_name:r.name,
+version:Number(r.collection.id),
+collection_name:r.collection.name,
+rarity:Number(r.rarity),
+market_price:0,
+image_url:null
+}));
+
+for(let i=0;i<payload.length;i+=100){
+const {error}=await db
+.from("pokemon_master")
+.insert(payload.slice(i,i+100));
+if(error) throw error;
+}
+
+const importedCollectionIds=[...new Set(valid.map(r=>Number(r.collection.id)))];
+alert(`${valid.length} Pokémon imported successfully.`);
+closeExcelImportModal();
+closeAddPokemon();
+await loadCollections();
+
+if(importedCollectionIds.length===1){
+const id=importedCollectionIds[0];
+const target=document.querySelector(`.version-btn[data-version="${id}"]`);
+await loadVersion(id,target);
+}else{
+const allBtn=document.querySelector('.version-btn[data-version="all"]');
+await loadVersion("all",allBtn);
+}
+}catch(error){
+console.error(error);
+alert("Import failed: "+(error.message || error));
+}finally{
+button.disabled=false;
+button.textContent="Import Valid Rows";
+}
+}
+
+/* =========================
    BUSH SOUND IDENTIFIER
 ========================= */
 
@@ -2287,17 +2641,17 @@ Add Pokémon
 
 <select
 id="addCollection"
-style="width:100%;padding:10px;margin-bottom:15px;">
-
-<option value="1">V1</option>
-<option value="2">V2</option>
-<option value="3">V3</option>
-<option value="4">🌌 Galaxy</option>
-<option value="5">🎁 Promo</option>
-<option value="6">🌍 Others</option>
-<option value="7">🏛 Legacy</option>
-
+style="width:100%;padding:10px;margin-bottom:8px;">
 </select>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px;">
+<button type="button" onclick="openAddCollectionModal()">
+➕ Add Version / Collection
+</button>
+<button type="button" onclick="openExcelImportModal()">
+📥 Import Excel
+</button>
+</div>
 
 <label>Tag Code *</label>
 
@@ -2390,6 +2744,70 @@ Save Pokémon
 </div>
 
 </div>
+  <div
+id="collectionModal"
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.80);
+justify-content:center;
+align-items:center;
+z-index:10001;
+">
+<div style="background:#1e293b;padding:24px;border-radius:12px;width:95%;max-width:500px;">
+<h2>Add Version / Collection</h2>
+<p style="color:#94a3b8;margin:8px 0 18px;line-height:1.5;">
+Add it once here and it can be loaded dynamically by the tracker. For numbered Mezastar versions, also enter the tag prefix.
+</p>
+<label>Name *</label>
+<input id="newCollectionName" placeholder="Example: V5" style="width:100%;padding:10px;margin:6px 0 15px;">
+<label>Tag Prefix (Optional)</label>
+<input id="newCollectionPrefix" placeholder="Example: 1-5-" style="width:100%;padding:10px;margin:6px 0 18px;">
+<div style="display:flex;justify-content:flex-end;gap:10px;">
+<button type="button" onclick="closeAddCollectionModal()">Cancel</button>
+<button type="button" onclick="saveNewCollection()">Add Collection</button>
+</div>
+</div>
+</div>
+
+<div
+id="excelImportModal"
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.82);
+justify-content:center;
+align-items:center;
+z-index:10002;
+">
+<div style="background:#1e293b;padding:24px;border-radius:12px;width:96%;max-width:1000px;max-height:92vh;overflow:auto;">
+<h2>📥 Bulk Import Pokémon from Excel</h2>
+<p style="color:#94a3b8;margin:8px 0 16px;line-height:1.5;">
+Required columns: <b>Tag Number</b>, <b>Pokemon Name</b>, <b>Rarity</b>, and <b>Collection</b>. Images can be uploaded later.
+</p>
+<input
+id="excelImportFile"
+type="file"
+accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+onchange="handleExcelImport(event)"
+style="width:100%;padding:10px;background:#0f172a;border-radius:8px;margin-bottom:12px;color:white;">
+<div id="excelImportSummary" style="font-weight:bold;margin:8px 0 12px;">Choose an Excel file.</div>
+<div id="excelImportPreview"></div>
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap;">
+<button type="button" onclick="closeExcelImportModal()">Cancel</button>
+<button type="button" id="confirmExcelImport" onclick="importExcelPokemon()" disabled>Import Valid Rows</button>
+</div>
+</div>
+</div>
+
   <div
 id="imageViewer"
 style="
