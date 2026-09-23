@@ -770,6 +770,7 @@ let currentVersion="all";
 let currentView="all";
 let editPokemonId=null;
 let importPreviewRows=[];
+let imageImportPreviewRows=[];
 
 function collectionById(id){
 return collections.find(c=>String(c.id)===String(id));
@@ -2114,6 +2115,229 @@ button.textContent="Import Valid Rows";
 }
 
 /* =========================
+   BULK IMAGE IMPORT BY TAG NUMBER
+========================= */
+function openImageImportModal(){
+imageImportPreviewRows=[];
+document.getElementById("imageImportFiles").value="";
+document.getElementById("imageImportSummary").textContent=
+"Choose image files whose file name is exactly the Pokémon Tag Number, for example 1-3-001.jpg.";
+document.getElementById("imageImportPreview").innerHTML="";
+const button=document.getElementById("confirmImageImport");
+button.disabled=true;
+button.textContent="Upload Matched Images";
+document.getElementById("imageImportModal").style.display="flex";
+}
+
+function closeImageImportModal(){
+document.getElementById("imageImportModal").style.display="none";
+}
+
+function tagFromImageFilename(filename){
+return String(filename || "")
+.replace(/\.[^.]+$/i,"")
+.trim();
+}
+
+function safeStoragePart(value){
+return String(value || "")
+.normalize("NFKD")
+.replace(/[\u0300-\u036f]/g,"")
+.replace(/[^a-zA-Z0-9._-]+/g,"_")
+.replace(/^_+|_+$/g,"") || "pokemon";
+}
+
+function getFileExtension(filename){
+const match=String(filename || "").match(/\.([^.]+)$/);
+return match ? match[1].toLowerCase() : "jpg";
+}
+
+async function handleImageImport(event){
+const files=Array.from(event.target.files || []);
+if(!files.length) return;
+
+const seenTags=new Set();
+const parsed=files.map((file,index)=>{
+const tag=tagFromImageFilename(file.name);
+const errors=[];
+
+if(!file.type.startsWith("image/")) errors.push("Not an image file");
+if(!tag) errors.push("Could not read Tag Number from filename");
+
+const key=tag.toLowerCase();
+if(tag && seenTags.has(key)) errors.push("Duplicate Tag Number in selected files");
+if(tag) seenTags.add(key);
+
+return {
+index:index+1,
+file,
+fileName:file.name,
+tag,
+pokemon:null,
+errors
+};
+});
+
+try{
+const tags=[...new Set(parsed.filter(r=>r.tag).map(r=>r.tag))];
+const found=[];
+
+for(let i=0;i<tags.length;i+=100){
+const {data,error}=await db
+.from("pokemon_master")
+.select("id,tag_code,pokemon_name,version,collection_name,image_url")
+.in("tag_code",tags.slice(i,i+100));
+if(error) throw error;
+found.push(...(data || []));
+}
+
+const byTag=new Map(found.map(p=>[String(p.tag_code).toLowerCase(),p]));
+
+parsed.forEach(row=>{
+row.pokemon=byTag.get(row.tag.toLowerCase()) || null;
+if(row.tag && !row.pokemon){
+row.errors.push("No Pokémon with this Tag Number");
+}
+});
+
+imageImportPreviewRows=parsed;
+renderImageImportPreview();
+}catch(error){
+console.error(error);
+alert("Could not verify the image filenames against the Pokémon database: "+(error.message || error));
+}
+}
+
+function renderImageImportPreview(){
+const valid=imageImportPreviewRows.filter(r=>r.errors.length===0 && r.pokemon);
+const invalid=imageImportPreviewRows.length-valid.length;
+const replacing=valid.filter(r=>r.pokemon?.image_url).length;
+
+document.getElementById("imageImportSummary").textContent=
+`${valid.length} matched • ${invalid} unmatched / invalid • ${replacing} will replace an existing image`;
+
+document.getElementById("confirmImageImport").disabled=valid.length===0;
+
+const preview=imageImportPreviewRows.slice(0,150).map(r=>{
+let status="Matched";
+let statusColor="#4ade80";
+if(r.errors.length){
+status=r.errors.join("; ");
+statusColor="#f87171";
+}else if(r.pokemon?.image_url){
+status="Matched — existing image will be replaced";
+statusColor="#facc15";
+}
+
+return `
+<tr>
+<td style="padding:7px;border-bottom:1px solid #334155;">${r.index}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.fileName)}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.tag)}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.pokemon?.pokemon_name || "-")}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;">${escapeHtml(r.pokemon ? getCollectionLabel(r.pokemon.version,r.pokemon.collection_name) : "-")}</td>
+<td style="padding:7px;border-bottom:1px solid #334155;color:${statusColor};">${escapeHtml(status)}</td>
+</tr>`;
+}).join("");
+
+document.getElementById("imageImportPreview").innerHTML=`
+<div style="overflow:auto;max-height:390px;">
+<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:820px;">
+<thead>
+<tr style="text-align:left;background:#0f172a;position:sticky;top:0;">
+<th style="padding:7px;">#</th>
+<th style="padding:7px;">Image File</th>
+<th style="padding:7px;">Tag Number</th>
+<th style="padding:7px;">Pokémon</th>
+<th style="padding:7px;">Collection</th>
+<th style="padding:7px;">Status</th>
+</tr>
+</thead>
+<tbody>${preview}</tbody>
+</table>
+</div>
+${imageImportPreviewRows.length>150 ? `<div style="margin-top:8px;color:#94a3b8;">Preview shows the first 150 files. All matched images will still be uploaded.</div>` : ""}
+`;
+}
+
+async function importPokemonImages(){
+const valid=imageImportPreviewRows.filter(r=>r.errors.length===0 && r.pokemon);
+if(!valid.length) return;
+
+const replacing=valid.filter(r=>r.pokemon.image_url).length;
+let message=`Upload ${valid.length} matched image${valid.length===1 ? "" : "s"}?`;
+if(replacing){
+message+=`\n\n${replacing} Pokémon already have an image. Their image_url will be updated to the newly uploaded file.`;
+}
+const confirmed=confirm(message);
+if(!confirmed) return;
+
+const button=document.getElementById("confirmImageImport");
+button.disabled=true;
+let success=0;
+const failures=[];
+const stamp=Date.now();
+
+for(let i=0;i<valid.length;i++){
+const row=valid[i];
+button.textContent=`Uploading ${i+1} / ${valid.length}...`;
+
+try{
+const ext=getFileExtension(row.file.name);
+const storageName=
+`bulk/${safeStoragePart(row.pokemon.tag_code)}_${safeStoragePart(row.pokemon.pokemon_name)}_${stamp}_${i+1}.${ext}`;
+
+const upload=await db.storage
+.from("pokemon-images")
+.upload(storageName,row.file,{upsert:false});
+
+if(upload.error) throw upload.error;
+
+const publicUrl=db.storage
+.from("pokemon-images")
+.getPublicUrl(storageName)
+.data.publicUrl;
+
+const {error:updateError}=await db
+.from("pokemon_master")
+.update({image_url:publicUrl})
+.eq("id",row.pokemon.id);
+
+if(updateError) throw updateError;
+
+success++;
+}catch(error){
+console.error("Image import failed",row.fileName,error);
+failures.push(`${row.fileName}: ${error.message || error}`);
+}
+}
+
+if(failures.length){
+alert(
+`${success} image${success===1 ? "" : "s"} uploaded successfully.\n`+
+`${failures.length} failed.\n\n`+
+failures.slice(0,10).join("\n")+
+(failures.length>10 ? `\n...and ${failures.length-10} more.` : "")
+);
+}else{
+alert(`${success} image${success===1 ? "" : "s"} matched and uploaded successfully.`);
+closeImageImportModal();
+closeAddPokemon();
+}
+
+button.disabled=false;
+button.textContent="Upload Matched Images";
+
+if(currentView==="owned"){
+await loadOwned(document.getElementById("ownedBtn"));
+}else if(currentView==="missing"){
+await loadMissing(document.getElementById("missingBtn"));
+}else{
+await loadVersion(currentVersion,document.querySelector(".version-btn.active"));
+}
+}
+
+/* =========================
    BUSH SOUND IDENTIFIER
 ========================= */
 
@@ -2651,6 +2875,9 @@ style="width:100%;padding:10px;margin-bottom:8px;">
 <button type="button" onclick="openExcelImportModal()">
 📥 Import Excel
 </button>
+<button type="button" onclick="openImageImportModal()">
+🖼️ Import Images
+</button>
 </div>
 
 <label>Tag Code *</label>
@@ -2808,7 +3035,45 @@ style="width:100%;padding:10px;background:#0f172a;border-radius:8px;margin-botto
 </div>
 </div>
 
-  <div
+<div
+id="imageImportModal"
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.82);
+justify-content:center;
+align-items:center;
+z-index:10003;
+">
+<div style="background:#1e293b;padding:24px;border-radius:12px;width:96%;max-width:1050px;max-height:92vh;overflow:auto;">
+<h2>🖼️ Bulk Import Pokémon Images</h2>
+<p style="color:#94a3b8;margin:8px 0 8px;line-height:1.5;">
+Name each image file using the exact Pokémon Tag Number. Example: <b>1-3-001.jpg</b> will be matched to the Pokémon whose tag is <b>1-3-001</b>.
+</p>
+<p style="color:#facc15;margin:0 0 16px;line-height:1.5;">
+You can select many images at once. Files that do not match an existing Tag Number will be skipped.
+</p>
+<input
+id="imageImportFiles"
+type="file"
+accept="image/*"
+multiple
+onchange="handleImageImport(event)"
+style="width:100%;padding:10px;background:#0f172a;border-radius:8px;margin-bottom:12px;color:white;">
+<div id="imageImportSummary" style="font-weight:bold;margin:8px 0 12px;">Choose image files.</div>
+<div id="imageImportPreview"></div>
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap;">
+<button type="button" onclick="closeImageImportModal()">Cancel</button>
+<button type="button" id="confirmImageImport" onclick="importPokemonImages()" disabled>Upload Matched Images</button>
+</div>
+</div>
+</div>
+
+    <div
 id="imageViewer"
 style="
 display:none;
