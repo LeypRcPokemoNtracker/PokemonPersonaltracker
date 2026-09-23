@@ -598,6 +598,17 @@ if(!userId){
 
 }
 
+const fallbackCollections = [
+{id:1,name:"V1",label:"V1",sort_order:1},
+{id:2,name:"V2",label:"V2",sort_order:2},
+{id:3,name:"V3",label:"V3",sort_order:3},
+{id:8,name:"V4",label:"V4",sort_order:4},
+{id:4,name:"Galaxy",label:"🌌 Galaxy",sort_order:5},
+{id:5,name:"Promo",label:"🎁 Promo",sort_order:6},
+{id:6,name:"Others",label:"🌍 Others",sort_order:7},
+{id:7,name:"Legacy",label:"🏛 Legacy",sort_order:8}
+];
+let collections=[...fallbackCollections];
 let pokemonList = [];
 let tradeHistory = [];
 init();
@@ -607,6 +618,9 @@ async function init(){
    
     document.getElementById("tradeDate").value =
         new Date().toISOString().split("T")[0];
+
+    // Load dynamic Collection / Version definitions first
+    await loadCollections();
 
     // Pokémon MUST load first
     await loadPokemon();
@@ -629,6 +643,27 @@ async function init(){
     .addEventListener("change",renderHistory);
 
 }
+async function loadCollections(){
+const {data,error}=await db
+.from("mezastar_collections")
+.select("id,name,label,sort_order,active")
+.eq("active",true)
+.order("sort_order")
+.order("id");
+if(!error && data?.length) collections=data;
+else if(error) console.warn("Using fallback collection list.",error);
+}
+
+function getCollectionLabel(id,fallback="Other"){
+const c=collections.find(x=>String(x.id)===String(id));
+return c?.label || c?.name || fallback || "Other";
+}
+
+function getCollectionSort(id){
+const c=collections.find(x=>String(x.id)===String(id));
+return c?.sort_order ?? 9999;
+}
+
 async function loadPokemon(){
 
 const { data, error } = await db
@@ -638,7 +673,8 @@ id,
 pokemon_name,
 rarity,
 tag_code,
-version
+version,
+collection_name
 `)
 .order("version")
 .order("tag_code");
@@ -662,45 +698,22 @@ select.innerHTML =
 const grouped = {};
 
 data.forEach(pokemon=>{
-
-const version = {
-
-1:"V1",
-2:"V2",
-3:"V3",
-4:"Galaxy 🌌",
-5:"Promo 🎁",
-6:"Others 🌍"
-
-}[pokemon.version] || "Other";
-
-    if(!grouped[version]){
-
-        grouped[version] = [];
-
-    }
-
-    grouped[version].push(pokemon);
-
+const versionKey=String(pokemon.version ?? "unknown");
+if(!grouped[versionKey]) grouped[versionKey]=[];
+grouped[versionKey].push(pokemon);
 });
 
 Object.keys(grouped)
-.sort((a,b)=>{
-
-    const na = parseInt(a.replace(/\D/g,"")) || 0;
-    const nb = parseInt(b.replace(/\D/g,"")) || 0;
-
-    return nb - na;
-
-})
-.forEach(version=>{
+.sort((a,b)=>getCollectionSort(a)-getCollectionSort(b))
+.forEach(versionKey=>{
 
     const optgroup =
         document.createElement("optgroup");
 
+const firstPokemon=grouped[versionKey][0];
 optgroup.label =
-    `${version} (${grouped[version].length})`;
-    grouped[version].forEach(pokemon=>{
+    `${getCollectionLabel(versionKey,firstPokemon?.collection_name)} (${grouped[versionKey].length})`;
+    grouped[versionKey].forEach(pokemon=>{
 
         const stars =
             "★".repeat(pokemon.rarity || 0);
@@ -948,16 +961,7 @@ function renderHistory(){
 
     <b>Version:</b>
 
-${{
-
-1:"V1",
-2:"V2",
-3:"V3",
-4:"Galaxy 🌌",
-5:"Promo 🎁",
-6:"Others 🌍"
-
-}[pokemon?.version] || "-"}
+${getCollectionLabel(pokemon?.version,pokemon?.collection_name || "-")}
 
 </div>
             <div class="row">
