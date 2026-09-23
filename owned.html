@@ -370,18 +370,7 @@ placeholder="Search Pokémon or Tag Code..."
 >
 
 <select id="versionFilter">
-
 <option value="All">All Versions</option>
-
-<option value="1">V1</option>
-
-<option value="2">V2</option>
-
-<option value="3">V3</option>
-  <option value="4">Galaxy</option>
-
-<option value="5">Promo</option>
-
 </select>
 
 <select id="rarityFilter">
@@ -494,6 +483,17 @@ location.href="index.html";
 
 }
 
+const fallbackCollections = [
+{id:1,name:"V1",label:"V1",sort_order:1},
+{id:2,name:"V2",label:"V2",sort_order:2},
+{id:3,name:"V3",label:"V3",sort_order:3},
+{id:8,name:"V4",label:"V4",sort_order:4},
+{id:4,name:"Galaxy",label:"🌌 Galaxy",sort_order:5},
+{id:5,name:"Promo",label:"🎁 Promo",sort_order:6},
+{id:6,name:"Others",label:"🌍 Others",sort_order:7},
+{id:7,name:"Legacy",label:"🏛 Legacy",sort_order:8}
+];
+let collections=[...fallbackCollections];
 let ownedPokemon=[];
 
 let moves=[];
@@ -568,7 +568,8 @@ async function init(){
     await Promise.all([
         loadOwnedPokemon(),
         loadMoves(),
-        loadTagConfigs()
+        loadTagConfigs(),
+        loadCollections()
     ]);
 
     renderCards();
@@ -589,6 +590,31 @@ document
 .addEventListener("change",renderCards);
 }
 
+async function loadCollections(){
+const {data,error}=await db
+.from("mezastar_collections")
+.select("id,name,label,sort_order,active")
+.eq("active",true)
+.order("sort_order")
+.order("id");
+if(!error && data?.length) collections=data;
+else if(error) console.warn("Using fallback collection list.",error);
+
+const select=document.getElementById("versionFilter");
+select.innerHTML='<option value="All">All Versions</option>';
+[...collections].sort((a,b)=>(a.sort_order??9999)-(b.sort_order??9999)).forEach(c=>{
+const option=document.createElement("option");
+option.value=c.id;
+option.textContent=c.label || c.name;
+select.appendChild(option);
+});
+}
+
+function getCollectionLabel(id,fallback="Unknown"){
+const c=collections.find(x=>String(x.id)===String(id));
+return c?.label || c?.name || fallback || "Unknown";
+}
+
 // --------------------
 // LOAD OWNED POKEMON
 // --------------------
@@ -606,6 +632,7 @@ id,
 tag_code,
 pokemon_name,
 version,
+collection_name,
 rarity,
 image_url,
 move_id,
@@ -836,13 +863,7 @@ const moveId = Number(p.move_id);
 
            <div class="version">
 
-${{
-1:"V1",
-2:"V2",
-3:"V3",
-4:"🌌 Galaxy",
-5:"🎁 Promo"
-}[p.version]}
+${getCollectionLabel(p.version,p.collection_name)}
 
 •
 
