@@ -435,10 +435,46 @@ if(!userId){
 document.getElementById('welcome')
     .innerText =
     `Welcome, ${username}`;
-loadCollectionStatsState();
+const fallbackCollections = [
+{id:1,name:"V1",label:"V1",sort_order:1},
+{id:2,name:"V2",label:"V2",sort_order:2},
+{id:3,name:"V3",label:"V3",sort_order:3},
+{id:8,name:"V4",label:"V4",sort_order:4},
+{id:4,name:"Galaxy",label:"🌌 Galaxy",sort_order:5},
+{id:5,name:"Promo",label:"🎁 Promo",sort_order:6},
+{id:6,name:"Others",label:"🌍 Others",sort_order:7},
+{id:7,name:"Legacy",label:"🏛 Legacy",sort_order:8}
+];
+let collections=[...fallbackCollections];
 
-loadStats();
-loadTrainerAssets();
+function getCollectionLabel(id,fallback="Unknown"){
+const c=collections.find(x=>String(x.id)===String(id));
+return c?.label || c?.name || fallback || "Unknown";
+}
+
+function getCollectionSort(id){
+const c=collections.find(x=>String(x.id)===String(id));
+return c?.sort_order ?? 9999;
+}
+
+async function loadCollections(){
+const {data,error}=await db
+.from("mezastar_collections")
+.select("id,name,label,sort_order,active")
+.eq("active",true)
+.order("sort_order")
+.order("id");
+if(!error && data?.length) collections=data;
+else if(error) console.warn("Using fallback collection list.",error);
+}
+
+async function initDashboard(){
+loadCollectionStatsState();
+await loadCollections();
+await Promise.all([loadStats(),loadTrainerAssets()]);
+}
+
+initDashboard();
     document
 .getElementById("trainerIdFile")
 .addEventListener("change",(e)=>{
@@ -522,6 +558,7 @@ const {data}=await db
 id,
 rarity,
 version,
+collection_name,
 user_collection(
 owned,
 user_id
@@ -597,25 +634,11 @@ document.getElementById("overallText").innerHTML=
 
 `${owned} / ${data.length} (${percent}%)`;
 
-const versionNames={
-
-1:"V1",
-
-2:"V2",
-
-3:"V3",
-
-4:"🌌 Galaxy",
-
-5:"🎁 Promo"
-
-};
-
 let html="";
 
 Object.keys(versionStats)
 .map(Number)
-.sort((a,b)=>a-b)
+.sort((a,b)=>getCollectionSort(a)-getCollectionSort(b))
 
 .forEach(v=>{
 
@@ -635,7 +658,7 @@ html+=`
 
 <div style="display:flex;justify-content:space-between;">
 
-<b>${versionNames[v] || "Version "+v}</b>
+<b>${getCollectionLabel(v,"Version "+v)}</b>
 
 <span>
 
