@@ -406,8 +406,7 @@ async function loadPokemon(){
 
 const {data,error} = await db
 .from('pokemon_master')
-.select('*')
-.not('pokemon_type_1','is',null);
+.select('*');
 
 if(error){
 console.error(error);
@@ -521,6 +520,10 @@ ${p.tag_code
 ? `<span style="color:#94a3b8">(${p.tag_code})</span>`
 : ''}
 
+${!p.pokemon_type_1
+? `<span style="color:#facc15;margin-left:8px;font-size:12px;font-weight:bold;">⚠ Type not set</span>`
+: ''}
+
 </div>
 
 `).join('');
@@ -583,6 +586,12 @@ style="max-width:150px;">
 <br>
 
 ${enemy.tag_code}
+
+<br>
+
+${!enemy.pokemon_type_1
+? `<span style="display:inline-block;margin-top:8px;color:#facc15;font-size:12px;font-weight:bold;">⚠ Type not set — weakness recommendations unavailable</span>`
+: `<span style="display:inline-block;margin-top:8px;color:#cbd5e1;font-size:12px;">${enemy.pokemon_type_1}${enemy.pokemon_type_2 ? ` / ${enemy.pokemon_type_2}` : ''}</span>`}
 
 <br><br>
 
