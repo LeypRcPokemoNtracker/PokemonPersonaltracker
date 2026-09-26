@@ -85,6 +85,37 @@ color:white;
 
 }
 
+.notOwnedToggle{
+padding:12px 16px;
+border-radius:8px;
+background:#334155;
+color:#e2e8f0;
+font-weight:bold;
+white-space:nowrap;
+}
+
+.notOwnedToggle:hover{
+background:#475569;
+}
+
+.notOwnedToggle.active{
+background:#f59e0b;
+color:#111827;
+box-shadow:0 0 0 2px rgba(245,158,11,.2);
+}
+
+.notOwnedBadge{
+display:inline-block;
+margin-bottom:8px;
+padding:4px 8px;
+border-radius:999px;
+background:#7c2d12;
+color:#fed7aa;
+font-size:11px;
+font-weight:bold;
+letter-spacing:.4px;
+}
+
 .filters input{
 
 flex:1;
@@ -369,6 +400,16 @@ id="search"
 placeholder="Search Pokémon or Tag Code..."
 >
 
+<button
+id="notOwnedBtn"
+class="notOwnedToggle"
+type="button"
+onclick="toggleNotOwnedMode()"
+title="Show Pokémon you do not currently own"
+>
+Not Owned
+</button>
+
 <select id="versionFilter">
 <option value="All">All Versions</option>
 </select>
@@ -495,6 +536,8 @@ const fallbackCollections = [
 ];
 let collections=[...fallbackCollections];
 let ownedPokemon=[];
+let allPokemon=[];
+let showNotOwned=false;
 
 let moves=[];
 
@@ -567,6 +610,7 @@ async function init(){
 
     await Promise.all([
         loadOwnedPokemon(),
+        loadAllPokemon(),
         loadMoves(),
         loadTagConfigs(),
         loadCollections()
@@ -656,8 +700,69 @@ move_type
 
     }
 
-    ownedPokemon=data.map(x=>x.pokemon_master);
+    ownedPokemon=data.map(x=>x.pokemon_master).filter(Boolean);
 
+}
+
+// --------------------
+// LOAD ALL POKEMON
+// Used by the Not Owned filter so movesets can be assigned
+// even before a Pokémon is marked as owned.
+// --------------------
+async function loadAllPokemon(){
+
+    const {data,error}=await db
+    .from("pokemon_master")
+    .select(`
+id,
+tag_code,
+pokemon_name,
+version,
+collection_name,
+rarity,
+image_url,
+move_id,
+special_move,
+pokemon_type_1,
+pokemon_type_2
+`)
+    .order("pokemon_name");
+
+    if(error){
+        console.log(error);
+        return;
+    }
+
+    allPokemon=data || [];
+}
+
+function getNotOwnedPokemon(){
+    const ownedIds=new Set(ownedPokemon.map(p=>Number(p.id)));
+    return allPokemon.filter(p=>!ownedIds.has(Number(p.id)));
+}
+
+function getCurrentPokemonPool(){
+    return showNotOwned ? getNotOwnedPokemon() : ownedPokemon;
+}
+
+function findPokemonById(id){
+    return allPokemon.find(p=>Number(p.id)===Number(id))
+        || ownedPokemon.find(p=>Number(p.id)===Number(id));
+}
+
+function toggleNotOwnedMode(){
+    showNotOwned=!showNotOwned;
+
+    const btn=document.getElementById("notOwnedBtn");
+    if(btn){
+        btn.classList.toggle("active",showNotOwned);
+        btn.textContent=showNotOwned ? "Not Owned ✓" : "Not Owned";
+        btn.title=showNotOwned
+            ? "Showing Pokémon you do not own. Click to return to owned Pokémon."
+            : "Show Pokémon you do not currently own";
+    }
+
+    renderCards();
 }
 
 // --------------------
@@ -711,12 +816,12 @@ async function loadTagConfigs(){
     tagConfigs=data;
 
 }
-function updateSummary(){
+function updateSummary(pool=getCurrentPokemonPool()){
 
-const total = ownedPokemon.length;
+const total = pool.length;
 
 const assigned =
-ownedPokemon.filter(p=>p.move_id).length;
+pool.filter(p=>p.move_id).length;
 
 const missing =
 total-assigned;
@@ -759,8 +864,9 @@ function renderCards(){
 const moveFilter=document
 .getElementById("moveFilter")
 .value;
-  updateSummary();
-    let list=[...ownedPokemon];
+    const baseList=getCurrentPokemonPool();
+    updateSummary(baseList);
+    let list=[...baseList];
 
     if(search){
 
@@ -817,7 +923,7 @@ list=list.filter(p=>p.move_id);
 
         container.innerHTML=`
         <div class="empty">
-        No owned Pokémon found.
+        ${showNotOwned ? "No not-owned Pokémon found." : "No owned Pokémon found."}
         </div>
         `;
 
@@ -836,6 +942,8 @@ const moveId = Number(p.move_id);
         html+=`
 
         <div class="card">
+
+            ${showNotOwned ? '<div class="notOwnedBadge">NOT OWNED</div>' : ''}
 
             <div class="image">
 
@@ -1000,7 +1108,7 @@ if(value==="manage"){
 openManageMoves();
 
 document.getElementById(`move-${pokemonId}`).value =
-ownedPokemon.find(x=>x.id===pokemonId)?.move_id || "";
+findPokemonById(pokemonId)?.move_id || "";
 
 return;
 
@@ -1070,7 +1178,7 @@ m.move_name
 
 const users =
 
-ownedPokemon.filter(
+allPokemon.filter(
 
 p=>p.move_id==m.id
 
@@ -1224,7 +1332,7 @@ document.getElementById("moveModal").style.display="flex";
 }
   async function deleteMove(moveId){
 
-const usedBy = ownedPokemon.filter(p=>p.move_id==moveId);
+const usedBy = allPokemon.filter(p=>p.move_id==moveId);
 
 if(usedBy.length){
 
@@ -1403,6 +1511,7 @@ if(updateError){
 // Reload owned Pokémon
 await Promise.all([
     loadOwnedPokemon(),
+    loadAllPokemon(),
     loadTagConfigs(),
     loadMoves()
 ]);
@@ -1476,6 +1585,7 @@ onConflict:"user_id,pokemon_id"
     // Refresh data
   await Promise.all([
     loadOwnedPokemon(),
+    loadAllPokemon(),
     loadTagConfigs()
 ]);
 
